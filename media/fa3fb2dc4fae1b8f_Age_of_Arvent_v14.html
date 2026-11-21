@@ -1,0 +1,706 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Age of Arvent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Almendra+SC&family=Figtree:wght@400;600;700&display=swap">
+<style>
+/* Layout: полноэкранный холст с видом сверху, HUD по углам, мобильные кнопки снизу (только на тач-устройствах). */
+:root{
+  --bg:#10190f; --panel:rgba(14,22,16,.8); --line:rgba(238,232,212,.18);
+  --ink:#eee8d4; --muted:#a9b39b; --accent:#e0913a;
+  --hp:#d2574f; --food:#a3c95f; --wood:#c19257; --stone:#c3c6bf; --gold:#f0c24a;
+  --display:'Almendra SC',Georgia,'Times New Roman',serif;
+  --body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#game{position:relative;height:100%;overflow:hidden;touch-action:none;background:var(--bg)}
+#cv{position:absolute;inset:0;display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(4px)}
+#hud{position:absolute;inset:0;pointer-events:none}
+#stats{position:absolute;left:16px;top:16px;padding:10px 12px;width:min(250px,calc(100% - 200px));display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.bar b{color:var(--ink);font-variant-numeric:tabular-nums}
+.bar i{grid-column:1/-1;height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}
+.bar u{display:block;height:100%;width:100%;background:var(--hp);transition:width .15s}
+#res{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.chip{display:flex;justify-content:space-between;gap:6px;font-size:12px;padding:5px 8px;border-radius:6px;background:rgba(255,255,255,.06);border-left:3px solid var(--c)}
+.chip b{font-variant-numeric:tabular-nums}
+#mapbox{position:absolute;right:16px;top:16px;padding:6px;display:flex;flex-direction:column;gap:4px;width:108px;pointer-events:auto;cursor:pointer}
+#mm{width:96px;height:96px;border-radius:6px;display:block;image-rendering:pixelated}
+#mapActions{display:flex;justify-content:flex-end;align-items:center;gap:6px}
+#bCraft{width:38px;height:38px;padding:0;border:1px solid var(--line);border-radius:50%;font:700 12px var(--body);color:#1a1208;background:var(--accent);cursor:pointer;pointer-events:auto}
+#loc{font-size:12px;font-weight:600;line-height:1.25}
+#clock{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+#hint{position:absolute;left:16px;bottom:16px;font-size:12px;color:var(--muted);padding:7px 10px}
+#touch{position:absolute;inset:0;pointer-events:none}
+#stick{position:absolute;left:20px;bottom:24px;width:140px;height:140px;border-radius:50%;background:rgba(14,22,16,.5);border:2px solid var(--line);pointer-events:auto;touch-action:none}
+#knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(238,232,212,.35);border:2px solid rgba(238,232,212,.6)}
+#btns{position:absolute;right:20px;bottom:24px;display:flex;align-items:flex-end;gap:14px;pointer-events:auto}
+#btns button{border:2px solid var(--line);color:var(--ink);font:700 15px var(--body);border-radius:50%;touch-action:none;background:rgba(14,22,16,.6)}
+#bHit{width:92px;height:92px;background:rgba(224,145,58,.75)!important;border-color:rgba(255,220,170,.6)!important}
+#bEat{width:64px;height:64px;margin-bottom:6px}
+#toast{position:absolute;left:50%;top:84px;transform:translateX(-50%);max-width:min(440px,calc(100% - 32px));text-align:center;padding:9px 14px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+#toast.show{opacity:1}
+#bigmap{position:absolute;inset:0;background:rgba(8,12,9,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+#bigmap canvas{border:1px solid var(--line);border-radius:8px;max-width:100%}
+#bigmap p{margin:0;font-size:13px;color:var(--muted)}
+#start{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 50% 40%,rgba(16,25,15,.55),rgba(8,12,8,.92))}
+#start .card{width:min(460px,100%);display:flex;flex-direction:column;gap:14px;padding:22px}
+#start h1{margin:0;font:400 clamp(38px,9vw,56px)/1 var(--display);letter-spacing:.02em;text-wrap:balance}
+#start h1 small{display:block;margin-top:8px;font:700 12px var(--body);letter-spacing:.22em;color:var(--accent);text-transform:uppercase}
+#start p{margin:0;font-size:14px;line-height:1.5;color:var(--muted)}
+#start dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+#start dt{color:var(--ink);font-weight:700}
+#start dd{margin:0;color:var(--muted)}
+#play{align-self:flex-start;border:0;border-radius:8px;padding:12px 26px;font:700 16px var(--body);color:#1a1208;background:var(--accent);cursor:pointer}
+#play:focus-visible,#bHit:focus-visible,#bEat:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+#bCraft{pointer-events:auto;border:0;border-radius:7px;padding:8px;font:700 13px var(--body);color:#1a1208;background:var(--accent);cursor:pointer}
+#bAct{width:64px;height:64px;margin-bottom:6px}
+#prompt{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);padding:7px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+#menu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(8,12,8,.6);z-index:5}
+#menu .card{width:min(400px,100%);max-height:100%;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:rgba(14,22,16,.95)}
+#menu h2{margin:0;font:400 28px var(--display)}
+#menu p{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+.opt{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);border-radius:8px;padding:10px 12px;font:600 14px var(--body);cursor:pointer;width:100%}
+.opt small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
+.opt em{font-style:normal;color:var(--accent);white-space:nowrap;font-size:12px}
+.opt:disabled{opacity:.45;cursor:not-allowed}
+.opt:focus-visible,.sw:focus-visible,#mclose:focus-visible,#bCraft:focus-visible,#bAct:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+#mclose{border:1px solid var(--line);background:none;color:var(--muted);border-radius:8px;padding:9px;font:600 14px var(--body);cursor:pointer}
+.sws{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--accent)}
+#cc{width:38px;height:34px;border:0;background:none;padding:0;cursor:pointer}
+#placebar{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:13px;font-weight:600;pointer-events:auto;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px)}
+#placebar button{border:0;border-radius:7px;padding:9px 14px;font:700 14px var(--body);cursor:pointer;color:#1a1208;background:var(--accent)}
+#pNo{background:rgba(255,255,255,.14)!important;color:var(--ink)!important}
+@media (max-width:520px){#res{grid-template-columns:1fr 1fr}#mapbox{width:100px}#mm{width:88px;height:88px}}
+</style>
+
+<div id="game">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div id="stats" class="panel">
+      <div class="bar"><span>Здоровье</span><b id="hpTxt">100</b><i><u id="hpFill"></u></i></div>
+      <div id="res">
+        <span class="chip" style="--c:var(--wood)">Дерево <b id="rWood">0</b></span>
+        <span class="chip" style="--c:var(--stone)">Камень <b id="rStone">0</b></span>
+        <span class="chip" style="--c:var(--gold)">Золото <b id="rGold">0</b></span>
+        <span class="chip" style="--c:var(--food)">Еда <b id="rFood">3</b></span>
+        <span class="chip" style="--c:#c9795a">Руда <b id="rOre">0</b></span>
+        <span class="chip" style="--c:#9fb4c8">Слитки <b id="rIng">0</b></span>
+      </div>
+    </div>
+    <div id="mapbox" class="panel" title="Карта (M)">
+      <canvas id="mm" width="132" height="132"></canvas>
+      <div id="loc">Арвент</div>
+      <div id="clock">12:00</div><div id="mapActions"><button id="bCraft" type="button" title="Строительство (C)">C</button></div>
+    </div>
+    <div id="hint" class="panel">WASD / стрелки — ход · мышь / Пробел — удар · E — еда · C — крафт · F — действие · M — карта</div>
+  </div>
+  <div id="touch" hidden>
+    <div id="stick"><div id="knob"></div></div>
+    <div id="btns"><button id="bAct" type="button">Меню</button><button id="bEat" type="button">Еда</button><button id="bHit" type="button">Удар</button></div>
+  </div>
+  <div id="toast"></div>
+  <div id="prompt" class="panel" hidden></div>
+  <div id="placebar" class="panel" hidden><span id="ptxt"></span><button id="pOk" type="button">Поставить</button><button id="pNo" type="button">Отмена</button></div>
+  <div id="bigmap" hidden><canvas id="bm"></canvas><p>Золотые квадраты — деревни. Нажмите M или коснитесь карты, чтобы закрыть.</p></div>
+  <div id="menu" hidden><div class="card panel"><h2 id="mtitle"></h2><div id="mbody" style="display:flex;flex-direction:column;gap:10px"></div><button id="mclose" type="button">Закрыть (Esc)</button></div></div>
+  <div id="start">
+    <div class="card panel">
+      <h1>Age of Arvent<small>YL Edition · версия 0.9.2</small></h1>
+      <p>Огромный материк: пляжи, луга, леса, тайга, саванна, пустыня, болота, горы и вулканы с лавой. Рубите деревья, добывайте камень и золото, отбивайтесь от свирепых волков. Стройте костры, дома, казармы и флаг территории. Деревни разного престижа: чем богаче, тем больше стражников. Одолейте их, захватите деревню и наймите мечников и лучников. Добывайте железную руду, плавьте слитки и куйте броню себе и страже. Стройте лекарню и оборонительные вышки; в богатых деревнях стоят вражеские вышки.</p>
+      <dl>
+        <dt>ПК</dt><dd>WASD или стрелки, удар мышью или Пробелом, E — съесть ягоды, M — карта</dd>
+        <dt>Крафт</dt><dd>C — меню крафта, F — действие у костра, флага или руин</dd>
+        <dt>Телефон</dt><dd>джойстик слева, кнопки «Удар» и «Еда» справа</dd>
+      </dl>
+      <button id="play" type="button">Играть</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const game=$('game'),cv=$('cv'),ctx=cv.getContext('2d');
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+//GEN-START
+// Типы местности: 0 глубокая вода, 1 мелководье, 2 пляж, 3 луга, 4 лес, 5 горы, 6 снега,
+// 7 тайга, 8 саванна, 9 вулкан, 10 болото, 11 пустыня, 12 лава (непроходима)
+const T=40,N=360,W=N*T,GR=200,GW=Math.ceil(W/GR),SAFE=230;
+const terr=new Uint8Array(N*N),shade=new Uint8Array(N*N);
+function makeNoise(seed){const r=rng(seed),G=64,g=[];for(let i=0;i<G*G;i++)g.push(r());const s=t=>t*t*(3-2*t);const v=(a,b)=>g[(b&63)*G+(a&63)];
+  return(x,y)=>{const xi=Math.floor(x),yi=Math.floor(y),u=s(x-xi),w=s(y-yi);return(v(xi,yi)*(1-u)+v(xi+1,yi)*u)*(1-w)+(v(xi,yi+1)*(1-u)+v(xi+1,yi+1)*u)*w}}
+function fbm(n,x,y){let s=0,a=.5,f=1,tot=0;for(let i=0;i<4;i++){s+=n(x*f,y*f)*a;tot+=a;a*=.5;f*=2}return s/tot}
+const nA=makeNoise(11),nB=makeNoise(77),nC=makeNoise(133),hr=rng(3);
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+  const dx=(x/N-.5)*2,dy=(y/N-.5)*2,d=Math.min(1,Math.hypot(dx,dy)/1.05);
+  const e=fbm(nA,x*.03,y*.03)+.21-Math.pow(d,3)*.5, m=fbm(nB,x*.04+40,y*.04+40);
+  const tp=clamp(y/N*.7+fbm(nC,x*.025,y*.025)*.6-.12,0,1); // температура: север холоднее, юг жарче
+  let t;
+  if(e<.30)t=0;else if(e<.36)t=1;else if(e<.40)t=2;
+  else if(e>.74)t=tp>.6?(m>.5?12:9):6;
+  else if(e>.66)t=tp>.6?9:5;
+  else if(tp<.38)t=7;
+  else if(tp>.66)t=m>.42?8:11;
+  else if(m>.6&&e<.5)t=10;
+  else t=m>.5?4:3;
+  terr[y*N+x]=t;shade[y*N+x]=(hr()*4)|0;
+}
+const tileAt=(x,y)=>{const tx=(x/T)|0,ty=(y/T)|0;return(x<0||y<0||tx>=N||ty>=N)?0:terr[ty*N+tx]};
+const walk=t=>t>1&&t!==12;
+// villages
+const vr=rng(9),villages=[],VCOUNT=22;
+const VOK=new Set([2,3,4,7,8,10,11]),VCEN=new Set([2,3,7,8,10,11]);
+const VN={2:['Тихая Гавань','Лунная Бухта','Рыбацкий Мыс','Ракушечный Берег'],3:['Дубрава','Северный Брод','Золотой Холм','Каменный Мост','Росистая Лощина','Зелёный Яр'],7:['Сосновый Бор','Ледяной Предел','Волчий Ручей','Иней','Хвойная Застава'],8:['Янтарная Саванна','Солнечная Равнина','Львиный Холм','Сухой Колодец','Акациевый Лог'],9:['Пепельная Застава','Дымная Гора','Угольный Приют'],10:['Топь','Тёмная Гать','Туманная Заводь'],11:['Оазис Миражей','Песчаный Приют','Караванный Двор']};
+function okVillage(tx,ty){for(let j=-4;j<=4;j++)for(let i=-4;i<=4;i++){if(!VOK.has(terr[(ty+j)*N+tx+i]))return false}return true}
+{let best=null,bd=1e9;for(let y=10;y<N-10;y++)for(let x=10;x<N-10;x++){if(terr[y*N+x]===3&&okVillage(x,y)){const d=Math.hypot(x-N/2,y-N/2);if(d<bd){bd=d;best=[x,y]}}}
+ if(!best){for(let y=10;y<N-10;y++)for(let x=10;x<N-10;x++){if(VCEN.has(terr[y*N+x])&&okVillage(x,y)){const d=Math.hypot(x-N/2,y-N/2);if(d<bd){bd=d;best=[x,y]}}}}
+ villages.push({x:best[0]*T+T/2,y:best[1]*T+T/2,name:'Арвент'});
+ for(let k=0;k<60000&&villages.length<VCOUNT;k++){const x=10+(vr()*(N-20))|0,y=10+(vr()*(N-20))|0;
+  if(!VCEN.has(terr[y*N+x])||!okVillage(x,y))continue;const px=x*T+T/2,py=y*T+T/2;
+  if(villages.every(v=>Math.hypot(v.x-px,v.y-py)>1300))villages.push({x:px,y:py,name:''})}
+ const used=new Set(['Арвент']);
+ villages.forEach((v,i)=>{if(i===0)return;const tx=(v.x/T)|0,ty=(v.y/T)|0;let key=terr[ty*N+tx],volc=false;
+  for(let j=-14;j<=14&&!volc;j+=2)for(let k=-14;k<=14;k+=2){const a=tx+k,b=ty+j;if(a>=0&&b>=0&&a<N&&b<N&&terr[b*N+a]===9){volc=true;break}}
+  if(volc)key=9;let pool=(VN[key]||VN[3]).filter(n=>!used.has(n));if(!pool.length)pool=['Заречье','Светлый Двор','Высокий Брод','Мшистый Холм','Вороний Утёс','Долина Ветров','Медовая Падь','Серебряный Ключ','Старый Тракт','Заря','Малиновый Лог','Грозовой Перевал'].filter(n=>!used.has(n));const nm=pool.length?pool[(vr()*pool.length)|0]:'Деревня '+(i+1);used.add(nm);v.name=nm})}
+// objects
+const objs=[],towers=[],grid=Array.from({length:GW*GW},()=>[]),orr=rng(5);
+function addObj(o){objs.push(o);const cx=clamp((o.x/GR)|0,0,GW-1),cy=clamp((o.y/GR)|0,0,GW-1);grid[cy*GW+cx].push(o)}
+const nearVillage=(x,y,r)=>villages.some(v=>Math.hypot(v.x-x,v.y-y)<r);
+const TIERS=[{n:'Бедная',st:1,g:2,hp:28,dmg:6,drop:1,h:3,fire:2},{n:'Средняя',st:2,g:5,hp:40,dmg:8,drop:1,h:5,fire:4},{n:'Богатая',st:3,g:8,hp:55,dmg:10,drop:2,h:7,fire:6}];
+villages.forEach((v,i)=>v.tier=[1,0,2][i%3]);
+for(const v of villages){const vi=villages.indexOf(v),n=TIERS[v.tier].h;for(let i=0;i<n;i++){let a=i/n*Math.PI*2+.4;const r=95+(i%2)*28+(n>5?(i%3)*10:0);let x,y;for(let k=0;k<14;k++){x=v.x+Math.cos(a)*r;y=v.y+Math.sin(a)*r;if(Math.hypot(x-v.x,y-(v.y-88))>74)break;a+=.25}
+  addObj({t:'house',x,y,r:28,hp:1,max:1,vi})}
+  v.towers=[];if(v.tier===2)for(let k=0;k<3;k++){const a=Math.PI/2+k*Math.PI*2/3,o={t:'tower',x:v.x+Math.cos(a)*185,y:v.y+Math.sin(a)*185,r:26,hp:50,max:50,vi,cd:0};addObj(o);v.towers.push(o);towers.push(o)}}
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){const t=terr[y*N+x],r=orr(),px=x*T+orr()*T,py=y*T+orr()*T;
+  if(t<2||t===12)continue;
+  if(nearVillage(px,py,215))continue;
+  const tr=k=>addObj({t:'tree',k,x:px,y:py,r:15,hp:4,max:4}),bu=()=>addObj({t:'bush',x:px,y:py,r:12,hp:2,max:2}),rk=k=>addObj({t:'rock',k,x:px,y:py,r:16,hp:5,max:5}),gd=()=>addObj({t:'gold',x:px,y:py,r:14,hp:6,max:6}),ir=()=>addObj({t:'iron',x:px,y:py,r:15,hp:7,max:7});
+  if(t===4){if(r<.38)tr()}
+  else if(t===3){if(r<.04)tr();else if(r<.065)bu()}
+  else if(t===5){if(r<.12)rk();else if(r<.145)gd();else if(r<.16)ir()}
+  else if(t===6){if(r<.04)rk();else if(r<.048)ir()}
+  else if(t===7){if(r<.34)tr('pine');else if(r<.37)bu();else if(r<.39)rk()}
+  else if(t===8){if(r<.045)tr('acacia');else if(r<.08)bu();else if(r<.095)rk();else if(r<.105)gd()}
+  else if(t===9){if(r<.10)rk('obs');else if(r<.18)gd();else if(r<.20)ir()}
+  else if(t===10){if(r<.14)tr('swamp');else if(r<.2)bu()}
+  else if(t===11){if(r<.025)tr('cactus');else if(r<.045)rk();else if(r<.055)gd()}
+  else if(t===2){if(r<.035)tr('palm')}}
+//GEN-END
+
+const PAL=[['#1d4a6b','#1f4f72','#1b4565','#205377'],['#2f7f9b','#3387a3','#2c7893','#3a8ea8'],['#d8c58a','#decd93','#d1bd80','#e2d29c'],['#5f9a49','#68a352','#589241','#6dab58'],['#3f7a3a','#447f3f','#3a7335','#488443'],['#8a8a82','#939289','#828179','#9a998f'],['#e8eef2','#f0f5f8','#dfe7ec','#f5f9fb'],
+ ['#3d6b55','#427059','#386350','#47765f'],['#b9a24f','#c1aa55','#b09944','#c8b25f'],['#4a3b3a','#524241','#433534','#5a4a48'],['#4a6a4a','#516f45','#425d40','#587a4c'],['#e3b96c','#e8c077','#dcae5f','#edc782'],['#d9441a','#e8571f','#c93a14','#f06a25']];
+const BIOME=['Глубокая вода','Мелководье','Пляж','Луга','Лес','Горы','Снега','Тайга','Саванна','Вулкан','Болото','Пустыня','Лава'];
+// minimap bitmap
+const mini=document.createElement('canvas');mini.width=mini.height=N;
+{const mc=mini.getContext('2d'),id=mc.createImageData(N,N);for(let i=0;i<N*N;i++){const h=PAL[terr[i]][0];id.data[i*4]=parseInt(h.slice(1,3),16);id.data[i*4+1]=parseInt(h.slice(3,5),16);id.data[i*4+2]=parseInt(h.slice(5,7),16);id.data[i*4+3]=255}mc.putImageData(id,0,0)}
+
+// state
+const keys={},joy={x:0,y:0,on:false},mouse={x:0,y:0,has:false,down:false};
+const PD=7,WD=16,GM=1.3; // урон игрока (волк умирает с 5 ударов), урон волка, множитель урона стражников
+let placing=null,started=false,hitHeld=false,touchMode=matchMedia('(pointer: coarse)').matches,time=0,phase=.05,VW=0,VH=0,DPR=1;
+const p={x:villages[0].x,y:villages[0].y+60,hp:100,max:100,face:Math.PI/2,swing:0,swingAng:0,cd:0,hurt:0,dead:0,inv:{wood:0,stone:0,gold:0,food:3,ore:0,ingot:0},arm:0};
+const wolves=[],floats=[],deps=[],arrows=[],clinics=[];
+function deplete(o){o.dep=true;o.respawn=time+50;deps.push(o)}
+{const wr=rng(21),WT=new Set([3,4,6,7,8,10]);for(let k=0;k<60000&&wolves.length<350;k++){const x=(wr()*W)|0,y=(wr()*W)|0,t=tileAt(x,y);if(WT.has(t)&&!nearVillage(x,y,420)){const WC=(t===6||t===7)?['#c3ccd2','#a3afb7']:t===8?['#b0925f','#8a6f42']:t===10?['#5f6a5a','#47523f']:t===4?['#6b655c','#4f4a43']:['#7b7f86','#5f636a'];wolves.push({x,y,hx:x,hy:y,hp:34,a:wr()*6.28,wt:0,idle:false,cd:0,kx:0,ky:0,dead:false,respawn:0,chase:false,hit:0,col:WC[0],hc:WC[1]})}}}
+
+function resize(){DPR=Math.min(window.devicePixelRatio||1,2);VW=game.clientWidth;VH=game.clientHeight;cv.width=VW*DPR;cv.height=VH*DPR;cv.style.width=VW+'px';cv.style.height=VH+'px'}
+window.addEventListener('resize',resize);resize();
+
+// ---- UI helpers
+let toastT=0;
+function toast(m){const el=$('toast');el.textContent=m;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2800)}
+function syncTouch(){$('touch').hidden=!(touchMode&&started);$('hint').hidden=touchMode||!started}
+function setTouch(v){if(touchMode!==v){touchMode=v;syncTouch()}}
+function floatText(x,y,txt,col){floats.push({x,y,txt,col,t:0})}
+const fires=[],flags=[],workers=[];
+villages.forEach((v,i)=>{v.state='free';v.fire={t:'fire',x:v.x-26,y:v.y+16,lvl:TIERS[v.tier].fire,vi:i};fires.push(v.fire);v.orig=v.name});
+const guards=[];{const gr=rng(31);villages.forEach((v,i)=>{
+  v.barracks={t:'barracks',x:v.x,y:v.y-88,r:34,hp:1,max:1,vi:i};addObj(v.barracks);
+  v.hall=null;if(v.tier===2){v.hall={t:'hall',x:v.x+78,y:v.y+18,r:36,hp:1,max:1,vi:i};addObj(v.hall)}
+  const tr=TIERS[v.tier],na=Math.max(1,Math.round(tr.g*.3)),pct=v.tier===2?.4:v.tier===1?.2:0,nu=Math.round(tr.g*pct),ups=new Set(Array.from({length:nu},(_,j)=>Math.floor((j+.5)*tr.g/nu)));const LV=k=>ups.has(k)?(v.tier===2?(k%2?3:2):1):0,HP=k=>(k<na?Math.round(tr.hp*.8):tr.hp)+10*LV(k);for(let k=0;k<tr.g;k++){let x,y;for(let n=0;n<30;n++){const a=gr()*6.28,r=60+gr()*(110+v.tier*25);x=v.x+Math.cos(a)*r;y=v.y+Math.sin(a)*r;if(!blocked(x,y,12))break}
+    guards.push({t:'guard',team:'v',vi:i,x,y,hx:x,hy:y,k:k<na?'archer':'melee',lv:LV(k),hp:HP(k),max:HP(k),dmg:tr.dmg,a:gr()*6.28,wt:0,idle:true,cd:0,kx:0,ky:0,dead:false,hit:0,aggro:false})}})}
+const FIRE={stone:5,wood:10},HOUSE={stone:10,wood:15},HOUSE_RESTORE={stone:5,wood:10},FLAG={stone:20,wood:20},RUIN={stone:15,wood:22},BRUIN={stone:10,wood:10},HALL_RESTORE={stone:10,wood:20},UP=[20,30,40,50,60,70],HALL={stone:25,wood:30},BAR={stone:15,wood:20},HIREW={food:5},COLS=['#d94b4b','#e0913a','#f0c24a','#7bc74d','#3fb8af','#4a8fe0','#9a63d6','#e86fb0'],JOBS={wood:['tree','Дровосек','Дерево','#c19257'],stone:['rock','Каменщик','Камень','#c3c6bf'],gold:['gold','Золотодобытчик','Золото','#f0c24a']};
+const rad=f=>(130+f.lvl*20)*(f.burn?1-f.burn:1);
+function flagOf(o){let b=null,bd=340;for(const f of flags){const d=Math.hypot(f.x-o.x,f.y-o.y);if(d<bd){bd=d;b=f}}return b}
+const pcol=o=>{const f=o?flagOf(o):null;return f?f.color:'#e0913a'};
+const fcol=f=>f.vi!=null?'#f0c24a':pcol(f);
+const inSafe=(x,y)=>{for(const f of fires)if(!f.gone&&Math.hypot(f.x-x,f.y-y)<rad(f))return f;return null};
+
+// ---- input
+const codeKey={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'};
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'){if(e.code==='Escape')closeMenu();return}setTouch(false);const k=codeKey[e.code];if(k){keys[k]=true;e.preventDefault()}
+  if(e.code==='Space'){hitHeld=true;e.preventDefault()}if(e.code==='KeyE'&&started)eat();if(e.code==='KeyM'&&started)toggleMap();if(e.code==='KeyC'&&started)toggleCraft();if(e.code==='KeyF'&&started)act();if(e.code==='Enter'&&placing)confirmPlace();if(e.code==='Escape'){closeMenu();cancelPlace()}});
+addEventListener('keyup',e=>{const k=codeKey[e.code];if(k)keys[k]=false;if(e.code==='Space')hitHeld=false});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;hitHeld=false;mouse.down=false});
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')setTouch(true)},true);
+document.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')setTouch(false)},{passive:true});
+cv.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;mouse.has=true}});
+cv.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button===0){mouse.down=true;const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;mouse.has=true}});
+addEventListener('pointerup',()=>{mouse.down=false});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+const stick=$('stick'),knob=$('knob');let sid=null;
+function stickMove(e){const r=stick.getBoundingClientRect(),R=r.width/2-18;let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);const l=Math.hypot(dx,dy);if(l>R){dx*=R/l;dy*=R/l}joy.x=dx/R;joy.y=dy/R;joy.on=l>8;knob.style.transform=`translate(${dx}px,${dy}px)`}
+stick.addEventListener('pointerdown',e=>{sid=e.pointerId;stick.setPointerCapture(e.pointerId);stickMove(e);e.preventDefault()});
+stick.addEventListener('pointermove',e=>{if(e.pointerId===sid)stickMove(e)});
+const stickEnd=e=>{if(e.pointerId===sid){sid=null;joy.on=false;joy.x=joy.y=0;knob.style.transform=''}};
+stick.addEventListener('pointerup',stickEnd);stick.addEventListener('pointercancel',stickEnd);
+const bHit=$('bHit');
+bHit.addEventListener('pointerdown',e=>{hitHeld=true;bHit.setPointerCapture(e.pointerId);e.preventDefault()});
+const hitEnd=()=>{hitHeld=false};bHit.addEventListener('pointerup',hitEnd);bHit.addEventListener('pointercancel',hitEnd);
+$('bEat').addEventListener('click',()=>eat());
+$('play').addEventListener('click',()=>{started=true;$('start').hidden=true;syncTouch();toast('Бейте деревья и камни, чтобы собрать ресурсы. Вне деревень бродят опасные волки.')});
+const bigmap=$('bigmap');
+function toggleMap(){bigmap.hidden=!bigmap.hidden;if(!bigmap.hidden)drawMap($('bm'),Math.min(VW,VH)-100)}
+$('mapbox').addEventListener('click',()=>{if(started)toggleMap()});bigmap.addEventListener('click',toggleMap);bigmap.hidden=true;
+
+function eat(){if(p.dead)return;if(p.inv.food<1){toast('Нет еды. Собирайте ягоды с кустов и добывайте её у волков.');return}
+  if(p.hp>=p.max){toast('Здоровье уже полное.');return}p.inv.food--;p.hp=Math.min(p.max,p.hp+10);floatText(p.x,p.y-24,'+10 HP','#a3c95f')}
+
+// ---- spatial helpers
+function forNear(x,y,fn){const cx=(x/GR)|0,cy=(y/GR)|0;for(let j=cy-1;j<=cy+1;j++)for(let i=cx-1;i<=cx+1;i++){if(i<0||j<0||i>=GW||j>=GW)continue;const c=grid[j*GW+i];for(let k=0;k<c.length;k++)fn(c[k])}}
+function eachNear(x,y,r,fn){const c0=Math.max(0,((x-r)/GR)|0),c1=Math.min(GW-1,((x+r)/GR)|0),r0=Math.max(0,((y-r)/GR)|0),r1=Math.min(GW-1,((y+r)/GR)|0);for(let j=r0;j<=r1;j++)for(let i=c0;i<=c1;i++){const c=grid[j*GW+i];for(let k=0;k<c.length;k++)fn(c[k])}}
+function blocked(x,y,rad,ignore){const tt=tileAt(x,y);if(tt===0||tt===12)return true;let hit=false;
+  forNear(x,y,o=>{if(hit||o===ignore||o.dep||o.ruin||o.t==='bush')return;const dx=x-o.x,dy=y-o.y,rr=rad+o.r;if(dx*dx+dy*dy<rr*rr)hit=true});return hit}
+// Простая локальная навигация: сначала пробует прямой путь, затем веер углов
+// вокруг препятствия. Это позволяет NPC обходить дома, деревья и камни.
+function navMove(e,tx,ty,speed,dt,stop=0,ignore=null){
+  const dx=tx-e.x,dy=ty-e.y,d=Math.hypot(dx,dy)||1;if(d<=stop)return true;
+  const base=Math.atan2(dy,dx),step=Math.min(speed*dt,Math.max(0,d-stop));
+  // После долгой блокировки сначала отступаем из тупика, затем меняем сторону обхода.
+  if(e.navEscape>0)e.navEscape-=dt;else if(e.navEscape<0)e.navEscape=0;
+  const turn=e.navTurn||1;
+  const angles=e.navEscape>0?[Math.PI,turn*1.45,-turn*1.45,turn*.8,-turn*.8,0]:[0,turn*.42,-turn*.42,turn*.82,-turn*.82,turn*1.22,-turn*1.22,Math.PI];let best=null,score=1e9;
+  for(const off of angles){const a=base+off,nx=e.x+Math.cos(a)*step,ny=e.y+Math.sin(a)*step;
+    if(!blocked(nx,ny,10,ignore)){const remain=Math.hypot(tx-nx,ty-ny)+Math.abs(off)*55;if(remain<score){score=remain;best=[nx,ny,a]}}
+  }
+  if(best){e.x=best[0];e.y=best[1];e.a=best[2];e.stuck=0;return true}
+  // Если зажали с двух сторон, пробуем раздельно пройти по одной оси.
+  const sx=Math.sign(dx)*step,sy=Math.sign(dy)*step;
+  if(!blocked(e.x+sx,e.y,10,ignore))e.x+=sx;else if(!blocked(e.x,e.y+sy,10,ignore))e.y+=sy;else e.stuck=(e.stuck||0)+dt;
+  if(e.stuck>.35){e.navTurn=-turn;e.navEscape=.65;e.stuck=0;const back=base+Math.PI;const bx=e.x+Math.cos(back)*step,by=e.y+Math.sin(back)*step;if(!blocked(bx,by,10,ignore)){e.x=bx;e.y=by}}
+  pushOut(e,10);return false;
+}
+const angDiff=(a,b)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));
+
+// ---- combat and gathering
+const GIVE={tree:['wood','Дерево','#c19257'],bush:['food','Еда','#a3c95f'],rock:['stone','Камень','#c3c6bf'],gold:['gold','Золото','#f0c24a'],iron:['ore','Руда','#d9825a']};
+function attack(){
+  if(p.cd>0||p.dead)return;p.cd=.38;p.swing=.18;let ang=p.face;
+  if(touchMode){let best=null,bd=100;for(const w of wolves.concat(guards)){if(w.dead||w.team==='p')continue;const d=Math.hypot(w.x-p.x,w.y-p.y);if(d<bd){bd=d;best=w}}
+    forNear(p.x,p.y,o=>{if(o.dep||!(GIVE[o.t]||isFoe(o)))return;const d=Math.hypot(o.x-p.x,o.y-p.y)-o.r;if(d<bd){bd=d;best=o}});
+    if(best)ang=Math.atan2(best.y-p.y,best.x-p.x)}
+  p.face=ang;p.swingAng=ang;
+  for(const w of wolves.concat(guards)){if(w.dead||w.team==='p')continue;const dx=w.x-p.x,dy=w.y-p.y,d=Math.hypot(dx,dy);
+    if(d<78&&angDiff(Math.atan2(dy,dx),ang)<1.2){const pd=Math.max(1,Math.round(PD*(1-defR(w))));w.hp-=pd;w.hit=.15;w.kx=dx/d*260;w.ky=dy/d*260;floatText(w.x,w.y-16,'-'+pd,'#ff8a7a');
+      if(w.team==='v'){provoke(w);if(w.hp<=0){w.dead=true;const gd=TIERS[villages[w.vi].tier].drop+(w.lv?1:0);p.inv.gold+=gd;floatText(w.x,w.y-30,'+'+gd+' Золото','#f0c24a')}}else if(w.hp<=0){w.dead=true;w.respawn=time+40;p.inv.food+=2;floatText(w.x,w.y-30,'+2 Еда','#a3c95f')}}}
+  for(const o of towers){if(!isFoe(o))continue;const dx=o.x-p.x,dy=o.y-p.y,d=Math.hypot(dx,dy);if(d<62+o.r&&angDiff(Math.atan2(dy,dx),ang)<1.3){o.hp-=PD;o.shake=time+.15;floatText(o.x,o.y-50,'-'+PD,'#ff8a7a');provoke({vi:o.vi,x:o.x,y:o.y});if(o.hp<=0){o.ruin=true;o.hp=o.max;floatText(o.x,o.y-64,'Вышка разрушена','#f0c24a')}}}
+  let tgt=null,td=1e9;
+  forNear(p.x,p.y,o=>{if(o.dep||!GIVE[o.t])return;const dx=o.x-p.x,dy=o.y-p.y,d=Math.hypot(dx,dy);if(d<62+o.r&&angDiff(Math.atan2(dy,dx),ang)<1.3&&d<td){td=d;tgt=o}});
+  if(tgt){const g=GIVE[tgt.t];tgt.hp--;tgt.shake=time+.15;p.inv[g[0]]++;floatText(tgt.x,tgt.y-22,'+1 '+g[1],g[2]);
+    if(tgt.hp<=0){deplete(tgt);if(tgt.t==='tree'){p.inv.wood++;floatText(tgt.x,tgt.y-38,'+1 Дерево',g[2])}}}
+}
+
+// ---- крафт, костры, флаг, захват
+const menu=$('menu'),mbody=$('mbody'),mtitle=$('mtitle');let menuMode=null,menuObj=null,tradeV=null;
+const HIRE={gold:10},TOWER={wood:20,stone:20,gold:15},TOWER_RESTORE={wood:10,stone:10,gold:5},CLINIC={wood:25,stone:15},TRADE={wood:30,stone:20},SMELT={stone:25,wood:15},ARMC=['#2c5f8a','#b8bec8','#d8dde6','#f0c24a','#8fd3ff'],LVC=['#c9ccd2','#e3e8ef','#f0c24a','#8fd3ff'],RN={wood:'Дерево',stone:'Камень',food:'Еда',ore:'Железная руда'};
+const can=c=>p.inv.wood>=(c.wood||0)&&p.inv.stone>=(c.stone||0)&&p.inv.gold>=(c.gold||0)&&p.inv.food>=(c.food||0)&&p.inv.ore>=(c.ore||0)&&p.inv.ingot>=(c.ingot||0);
+const pay=c=>{p.inv.wood-=c.wood||0;p.inv.stone-=c.stone||0;p.inv.gold-=c.gold||0;p.inv.food-=c.food||0;p.inv.ore-=c.ore||0;p.inv.ingot-=c.ingot||0};
+const cst=c=>[c.wood?c.wood+' дер.':'',c.stone?c.stone+' кам.':'',c.gold?c.gold+' зол.':'',c.food?c.food+' еды':'',c.ore?c.ore+' руды':'',c.ingot?c.ingot+' слит.':''].filter(Boolean).join(' · ');
+const opt=(a,v,t,d,c)=>`<button class="opt" data-a="${a}" data-v="${v}"${can(c)?'':' disabled'}><span>${t}<small>${d}</small></span><em>${cst(c)}</em></button>`;
+function openMenu(m,o){placing=null;tradeV=null;menuMode=m;menuObj=o;menu.hidden=false;renderMenu()}
+function closeMenu(){menu.hidden=true;menuMode=null;hitHeld=false}
+function toggleCraft(){if(!menu.hidden&&menuMode==='craft')closeMenu();else openMenu('craft')}
+function renderMenu(){let h='';const flag=menuMode==='flag'?menuObj:null;
+  if(menuMode==='craft'){mtitle.textContent='Крафт';
+    h=opt('mk','fire','Костёр','Безопасная зона вокруг. Улучшается за дерево.',FIRE)+opt('mk','house','Дом','Ставится перед вами.',HOUSE)+opt('mk','barracks','Казарма','Ставится перед вами. Стражники и лучники нанимаются за 10 золота, каждому нужен свой дом рядом.',BAR)+opt('mk','hall','Ратуша','Статистика деревни, найм рабочих за еду. Одна на деревню.',HALL)+opt('mk','clinic','Лекарня','Раненые стражники лечатся рядом, мгновенное лечение за еду.',CLINIC)+opt('mk','tower','Оборонительная вышка','Лучник бьёт врагов в радиусе как у костра 2 ур. Сначала выберите место.',TOWER)+opt('mk','trade','Дом переговоров','Торговля с деревнями: покупка дерева, камня, еды и железной руды за золото. Нужна ратуша рядом.',TRADE)+opt('mk','smelter','Плавильня','Выплавка слитков из железной руды. Там же можно улучшить броню.',SMELT)+opt('mk','flag','Флаг территории','Новый флаг с отдельным костром — новая деревня со своим цветом и названием. Флаг ближе 300 к другому переносится.',FLAG)}
+  else if(menuMode==='fire'){const f=menuObj;mtitle.textContent='Костёр';
+    h=`<p>Уровень ${f.lvl} из 6 · радиус безопасной зоны ${Math.round(rad(f))}</p>`+(f.lvl>=6?'<p>Максимальный уровень.</p>':opt('up',0,'Улучшить до уровня '+(f.lvl+1),'Зона растёт на 20',{wood:UP[f.lvl]}))}
+  else if(menuMode==='flag'){mtitle.textContent='Флаг территории';
+    const cols=['#d94b4b','#e0913a','#f0c24a','#7bc74d','#3fb8af','#4a8fe0','#9a63d6','#e86fb0'];
+    h='<p>Цвет флага окрашивает границу безопасной зоны.</p><div class="sws">'+cols.map(c=>`<button class="sw${flag.color===c?' on':''}" data-a="col" data-v="${c}" style="background:${c}" aria-label="Цвет ${c}"></button>`).join('')+`<input id="cc" type="color" value="${flag.color}" aria-label="Свой цвет"></div>`;
+    h+=`<p>Название деревни (появится у захваченной деревни рядом с флагом):</p><input id="fname" maxlength="20" placeholder="Название" value="${(flag.name||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" style="padding:10px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);font:600 14px var(--body)">`;
+    const near=villages.map((v,i)=>[v,i]).filter(([v])=>v.state==='free'&&Math.hypot(flag.x-v.x,flag.y-v.y)<340);
+    h+=near.length?near.map(([v,i])=>{const left=guards.filter(g=>g.team==='v'&&g.vi===i&&!g.dead).length;
+      return left?`<button class="opt" disabled><span>${v.name} · ${TIERS[v.tier].n}<small>Сначала одолейте стражников: ${left}</small></span></button>`:`<button class="opt" data-a="cap" data-v="${i}"><span>Захватить: ${v.name} · ${TIERS[v.tier].n}<small>Дома и казарма сгорят, безопасная зона исчезнет</small></span></button>`}).join(''):'<p>Чтобы захватить деревню, поставьте флаг рядом с ней (в радиусе её домов).</p>'}
+  else if(menuMode==='barracks'){const b=menuObj,hc=houseCount(b),gs=mem(b,guards),gc=gs.length,used=gc+mem(b,workers).length,nm=sname(b),on=gs.some(g=>g.expedition);mtitle.textContent='Казарма · '+nm;
+    h=`<p>Стражников: ${gc} (лучников ${gs.filter(g=>g.k==='archer').length}) · занято домов ${used} из ${hc}. Стражники и рабочие живут в домах: восстановите руины или постройте дома рядом.</p><button class="opt" data-a="hire"${can(HIRE)&&used<hc?'':' disabled'}><span>Нанять стражника<small>${used>=hc?'Нет свободных домов':'Защищает от волков'}</small></span><em>${cst(HIRE)}</em></button><button class="opt" data-a="harch"${can(HIRE)&&used<hc?'':' disabled'}><span>Нанять лучника<small>${used>=hc?'Нет свободных домов':'Стреляет из лука издалека'}</small></span><em>${cst(HIRE)}</em></button><button class="opt" data-a="exp"><span>${on?'Отозвать отряд':'Взять отряд в экспедицию'}<small>${on?'Стражники вернутся к казарме':'Стражники будут следовать за вами и сражаться'}</small></span></button><button class="opt" data-a="dg"${gc?'':' disabled'}><span>Уволить стражника<small>Освобождает место в доме</small></span></button>`+upgHtml(gs)+`<p>Слитков: ${p.inv.ingot}. Руду плавят в плавильне.</p>`}
+  else if(menuMode==='hall'){const b=menuObj,hc=houseCount(b),gc=mem(b,guards).length,ws=mem(b,workers),used=gc+ws.length,c=cen(b),m=c.mined||{wood:0,stone:0,gold:0},fs=terrFires(flagOf(b),b.x,b.y),by=j=>ws.filter(w=>w.job===j).length;
+    mtitle.textContent='Ратуша · '+sname(b);
+    h=`<p><b>Статистика</b><br>Дома: ${hc} · занято ${used}<br>Стражники: ${gc}<br>Рабочие: ${ws.length} (дерево ${by('wood')}, камень ${by('stone')}, золото ${by('gold')})<br>Костры: ${fs.length}${fs.length?' · радиус до '+Math.round(Math.max(...fs.map(f=>rad(f)))):''}<br>Добыто рабочими: дерево ${m.wood}, камень ${m.stone}, золото ${m.gold}</p><p>Нанять рабочего — 5 еды (у вас ${p.inv.food}). Работают только в зоне костров этой деревни.</p>`;
+    for(const j in JOBS){const J=JOBS[j];h+=`<button class="opt" data-a="hw" data-v="${j}"${can(HIREW)&&used<hc?'':' disabled'}><span>Нанять: ${J[1]}<small>${used>=hc?'Нет свободных домов':'Добывает: '+J[2].toLowerCase()+' · сейчас '+by(j)}</small></span><em>${cst(HIREW)}</em></button>`}
+    for(const j in JOBS)h+=`<button class="opt" data-a="dw" data-v="${j}"${by(j)?'':' disabled'}><span>Уволить: ${JOBS[j][1]}<small>Освобождает дом</small></span></button>`}
+  else if(menuMode==='clinic'){const b=menuObj,gs=mem(b,guards),ws=gs.filter(g=>g.hp<g.max);mtitle.textContent='Лекарня · '+sname(b);
+    h=`<p>Стражников: ${gs.length} · ранено: ${ws.length}. Раненые сами идут к лекарне и лечатся рядом (+4 HP/с). Мгновенное лечение стоит 1 еду за солдата (у вас ${p.inv.food}).</p><button class="opt" data-a="heal"${ws.length&&p.inv.food>=ws.length?'':' disabled'}><span>Вылечить всех<small>${ws.length?'Раненых: '+ws.length:'Все здоровы'}</small></span><em>${ws.length?ws.length+' еды':''}</em></button>`}
+  else if(menuMode==='trade'){mtitle.textContent='Дом переговоров';
+    if(tradeV==null){const bb=menuObj,L=villages.map((v,i)=>[v,i,Math.hypot(v.x-bb.x,v.y-bb.y)]).filter(q=>(q[0].state==='free'||q[0].state==='owned')).sort((a,c)=>a[2]-c[2]);
+      h='<p>Выберите любую деревню на карте. Чем богаче деревня, тем больше партия, но дороже каждая штука; у бедных мало и дёшево. У каждой деревни своя цена. У вас золота: '+p.inv.gold+'.</p>'+(L.length?L.map(q=>`<button class="opt" data-a="tv" data-v="${q[1]}"><span>${q[0].name}<small>${TIERS[q[0].tier].n} · ${'★'.repeat(TIERS[q[0].tier].st)} · ${Math.round(q[2]/40)} кл.</small></span></button>`).join(''):'<p>Рядом нет деревень для торговли.</p>')}
+    else{const v=villages[tradeV];h=`<p><b>${v.name}</b> · ${TIERS[v.tier].n}. Золото: ${p.inv.gold}</p>`;
+      for(const r of ['wood','stone','food','ore']){const o=tradeOffer(tradeV,r);h+=`<button class="opt" data-a="buy" data-v="${r}"${p.inv.gold>=o.price?'':' disabled'}><span>Купить: ${RN[r]} ×${o.qty}<small>${(o.price/o.qty).toFixed(2)} зол. за штуку</small></span><em>${o.price} зол.</em></button>`}
+      h+='<button class="opt" data-a="tb"><span>← Другая деревня</span></button>'}}
+  else if(menuMode==='smelter'){mtitle.textContent='Плавильня';
+    h=`<p>Руда: ${p.inv.ore} · Слитки: ${p.inv.ingot}. Из 2 руд выходит 1 слиток. Слитки идут на улучшение стражей (в казарме) и вашей брони.</p>`+opt('sm',1,'Выплавить слиток','2 железные руды → 1 слиток',{ore:2})+`<button class="opt" data-a="sm" data-v="all"${p.inv.ore>=2?'':' disabled'}><span>Выплавить всё<small>Все возможные слитки сразу</small></span><em>${Math.floor(p.inv.ore/2)} слит.</em></button>`+armHtml()}
+  mbody.innerHTML=h}
+function place(kind){const c={fire:FIRE,house:HOUSE,flag:FLAG,barracks:BAR,hall:HALL,clinic:CLINIC,tower:TOWER,trade:TRADE,smelter:SMELT}[kind];if(!can(c)){toast('Не хватает ресурсов.');return}
+  if(kind==='tower'){closeMenu();placing={kind:'tower'};toast('Выберите место и нажмите «Поставить» (F / Enter) или «Отмена» (Esc).');return}
+  const x=p.x+Math.cos(p.face)*58,y=p.y+Math.sin(p.face)*58;
+  if(blocked(x,y,kind==='hall'?42:kind==='barracks'?38:kind==='house'?30:(kind==='clinic'||kind==='trade'||kind==='smelter')?34:14)||fires.some(f=>!f.gone&&Math.hypot(f.x-x,f.y-y)<40)||flags.some(f=>Math.hypot(f.x-x,f.y-y)<40)){toast('Здесь нельзя ставить — мало места.');return}
+  if(kind==='hall'&&objs.some(o=>o.t==='hall'&&Math.hypot(o.x-x,o.y-y)<340)){toast('В этой деревне уже есть ратуша.');return}
+  if(kind==='trade'&&!hasHall(x,y)){toast('Нужна ратуша рядом (в вашей деревне).');return}
+  pay(c);closeMenu();
+  if(kind==='fire'){fires.push({t:'fire',x,y,lvl:0,vi:null});toast('Костёр разожжён. Нажмите F рядом, чтобы расширить зону.')}
+  else if(kind==='house'){addObj({t:'house',x,y,r:28,hp:1,max:1,vi:null});toast('Дом построен.')}
+  else if(kind==='barracks'){let vi=null;villages.forEach((v,i)=>{if(v.state==='owned'&&Math.hypot(v.x-x,v.y-y)<340)vi=i});addObj({t:'barracks',x,y,r:34,hp:1,max:1,vi,own:true});toast('Казарма построена. Нажмите F рядом, чтобы нанять стражника.')}
+  else if(kind==='hall'){let vi=null;villages.forEach((v,i)=>{if(v.state==='owned'&&Math.hypot(v.x-x,v.y-y)<340)vi=i});addObj({t:'hall',x,y,r:36,hp:1,max:1,vi,own:true});toast('Ратуша построена. Нажмите F рядом: статистика и найм рабочих.')}
+  else if(kind==='smelter'){addObj({t:'smelter',x,y,r:30,hp:1,max:1,vi:null,own:true});toast('Плавильня построена. F рядом — выплавка слитков и броня.')}
+  else if(kind==='trade'){let vi=null;villages.forEach((v,i)=>{if(v.state==='owned'&&Math.hypot(v.x-x,v.y-y)<340)vi=i});addObj({t:'trade',x,y,r:30,hp:1,max:1,vi,own:true});toast('Дом переговоров построен. F рядом — торговля с деревнями.')}
+  else if(kind==='clinic'){let vi=null;villages.forEach((v,i)=>{if(v.state==='owned'&&Math.hypot(v.x-x,v.y-y)<340)vi=i});const o={t:'clinic',x,y,r:32,hp:1,max:1,vi,own:true};addObj(o);clinics.push(o);toast('Лекарня построена. Раненые лечатся рядом, F — меню.')}
+  else{const ex=flags.find(f=>Math.hypot(f.x-x,f.y-y)<300);if(ex){ex.x=x;ex.y=y;openMenu('flag',ex);toast('Флаг перенесён.')}else{const fl={t:'flag',x,y,color:COLS[flags.length%COLS.length],name:''};flags.push(fl);openMenu('flag',fl);toast('Новый флаг. Поставьте рядом отдельный костёр — это новая деревня.')}}}
+function capture(i){const flag=menuObj,v=villages[i];if(menuMode!=='flag'||v.state!=='free'||Math.hypot(flag.x-v.x,flag.y-v.y)>340)return;
+  if(guards.some(g=>g.team==='v'&&g.vi===i&&!g.dead)){toast('Сначала одолейте всех стражников.');return}
+  v.state='burning';v.t=0;v.houses=objs.filter(o=>o.vi===i&&o.t==='house');closeMenu();toast(v.name+' горит! Безопасная зона сужается...')}
+function nearest(){let b=null,bd=1e9;const c=(o,k,r)=>{const d=Math.hypot(o.x-p.x,o.y-p.y);if(d<r&&d<bd){bd=d;b={k,o}}};
+  for(const f of fires)if(!f.gone&&(f.vi==null||villages[f.vi].state==='owned'))c(f,'fire',72);for(const fl of flags)c(fl,'flag',72);
+  forNear(p.x,p.y,o=>{if(o.t==='barracks'){if(o.ruin)c(o,'bruin',90);else if(o.own||villages[o.vi].state==='owned')c(o,'barracks',90)}else if(o.t==='hall'&&(o.own||o.vi==null||villages[o.vi].state==='owned')){if(o.ruin)c(o,'hallruin',90);else c(o,'hall',90)}else if(o.t==='clinic')c(o,'clinic',90);else if(o.t==='trade')c(o,'trade',90);else if(o.t==='smelter')c(o,'smelter',90);else if(o.t==='tower'){if(o.ruin)c(o,'truin',80)}else if(o.ruin&&o.t!=='hall')c(o,'ruin',80)});return b}
+function act(){if(p.dead)return;if(!menu.hidden){closeMenu();return}if(placing){confirmPlace();return}const n=nearest();
+  if(!n){toast('Рядом нет костра, флага или руин. Крафт — кнопка C.');return}
+  if(n.k==='ruin'||n.k==='bruin'||n.k==='hallruin'||n.k==='truin'){const v=villages[n.o.vi],c=n.k==='truin'?TOWER_RESTORE:n.k==='bruin'?BRUIN:n.k==='hallruin'?HALL_RESTORE:HOUSE_RESTORE;
+    if(v.state!=='owned'){toast('Сначала поставьте рядом костёр и флаг: деревня станет вашей.');return}
+    if(!can(c)){toast('Не хватает ресурсов: '+cst(c));return}
+    pay(c);n.o.ruin=false;n.o.burn=0;if(n.k==='truin'){n.o.own=true;n.o.hp=n.o.max}floatText(n.o.x,n.o.y-44,n.k==='truin'?'Вышка восстановлена':n.k==='bruin'?'Казарма восстановлена':n.k==='hallruin'?'Ратуша восстановлена':'Дом восстановлен','#a3c95f');return}
+  openMenu(n.k,n.o)}
+mbody.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,v=b.dataset.v;
+  if(a==='mk')place(v);
+  else if(a==='up'){const f=menuObj;if(f.lvl>=6)return;const c={wood:UP[f.lvl]};if(!can(c)){toast('Не хватает дерева.');return}pay(c);f.lvl++;floatText(f.x,f.y-30,'Уровень '+f.lvl,'#f0c24a');renderMenu()}
+  else if(a==='col'){menuObj.color=v;renderMenu()}
+  else if(a==='cap')capture(+v);else if(a==='hire')hire('guard');else if(a==='harch')hire('archer');else if(a==='heal')healAll();else if(a==='ug')upG(v);else if(a==='sm')smelt(v==='all');else if(a==='uarm')upArmor();else if(a==='tv'){tradeV=+v;renderMenu()}else if(a==='tb'){tradeV=null;renderMenu()}else if(a==='buy')buy(v);else if(a==='exp')toggleExpedition(menuObj);else if(a==='hw')hireW(v);else if(a==='dw')fireW(v);else if(a==='dg')fireG()});
+mbody.addEventListener('input',e=>{if(menuMode!=='flag')return;const flag=menuObj;if(e.target.id==='cc')flag.color=e.target.value;else if(e.target.id==='fname'){flag.name=e.target.value.trim();applyName(flag)}});
+menu.addEventListener('click',e=>{if(e.target===menu)closeMenu()});
+ $('mclose').addEventListener('click',closeMenu);$('pOk').addEventListener('click',()=>confirmPlace());$('pNo').addEventListener('click',()=>cancelPlace());$('bCraft').addEventListener('click',e=>{e.stopPropagation();if(started)toggleCraft()});$('bAct').addEventListener('click',act);
+const cen=b=>b.vi!=null?villages[b.vi]:(flagOf(b)||b);
+const mem=(b,arr)=>{const c=cen(b);return arr.filter(u=>u.team==='p'&&!u.dead&&(b.vi!=null?u.vi===b.vi:u.vi==null&&Math.hypot(u.hx-c.x,u.hy-c.y)<340))};
+const sname=b=>b.vi!=null?villages[b.vi].name+' · '+TIERS[villages[b.vi].tier].n:(flagOf(b)&&flagOf(b).name)||'Ваш лагерь';
+const terrFires=(fl,x,y)=>fires.filter(f=>!f.gone&&f.vi==null&&(fl?flagOf(f)===fl:Math.hypot(f.x-x,f.y-y)<340));
+function houseCount(b){const c=cen(b);let n=0;for(const o of objs)if(o.t==='house'&&!o.ruin&&((b.vi!=null&&o.vi===b.vi)||(o.vi==null&&Math.hypot(o.x-c.x,o.y-c.y)<340)))n++;return n}
+function hire(kind){const b=menuObj,vi=b.vi;if(mem(b,guards).length+mem(b,workers).length>=houseCount(b)){toast('Нет свободных домов. Восстановите или постройте дом.');return}
+  if(!can(HIRE)){toast('Нужно 10 золота.');return}pay(HIRE);const x=b.x,y=b.y+52;
+  guards.push({t:'guard',team:'p',vi,k:kind==='archer'?'archer':'melee',dmg:kind==='archer'?7:8,x,y,hx:x,hy:y,hp:kind==='archer'?34:40,max:kind==='archer'?34:40,a:Math.PI/2,wt:0,idle:false,cd:0,kx:0,ky:0,dead:false,hit:0,aggro:false,expedition:false,slot:guards.length});toast(kind==='archer'?'Лучник нанят.':'Стражник нанят.');renderMenu()}
+function toggleExpedition(b){const gs=mem(b,guards),on=!gs.some(g=>g.expedition);gs.forEach((g,i)=>{g.expedition=on;g.slot=i;g.aggro=false});toast(on?(gs.length?'Отряд следует за вами.':'В казарме нет нанятых стражников.'):'Отряд возвращается к казарме.');renderMenu()}
+function applyName(fl){if(!fl)return;for(const v of villages)if(v.state==='owned'&&flagOf(v)===fl)v.name=fl.name||v.orig}
+function hireW(job){const b=menuObj;if(mem(b,guards).length+mem(b,workers).length>=houseCount(b)){toast('Нет свободных домов.');return}
+  if(!can(HIREW)){toast('Нужно 5 еды.');return}pay(HIREW);const x=b.x,y=b.y+56;
+  workers.push({t:'worker',team:'p',job,vi:b.vi,cen:cen(b),flag:flagOf(b),hx:x,hy:y,x,y,a:Math.PI/2,wt:0,idle:false,cd:1,look:0,tg:null,wait:null,bad:null,badT:0,wd:0,stall:0,dead:false});toast('Рабочий нанят.');renderMenu()}
+function fireG(){const l=mem(menuObj,guards);if(!l.length)return;guards.splice(guards.indexOf(l[l.length-1]),1);toast('Стражник уволен.');renderMenu()}
+function fireW(j){const l=mem(menuObj,workers).filter(w=>w.job===j);if(!l.length)return;workers.splice(workers.indexOf(l[l.length-1]),1);toast('Рабочий уволен.');renderMenu()}
+// ---- рабочие: всегда ищут работу, не застревают; ждут только пока ресурс отрастёт
+const inZone=(w,o)=>terrFires(w.flag,w.hx,w.hy).some(f=>Math.hypot(o.x-f.x,o.y-f.y)<rad(f));
+function findRes(w){const J=JOBS[w.job][0],fs=terrFires(w.flag,w.hx,w.hy);if(!fs.length)return null;let b=null,bd=1e9;
+  for(const f of fs){const r=rad(f);eachNear(f.x,f.y,r,o=>{if(o.t!==J||o.dep||o===w.bad)return;if(Math.hypot(o.x-f.x,o.y-f.y)>=r)return;const d=Math.hypot(o.x-w.x,o.y-w.y);if(d<bd){bd=d;b=o}})}return b}
+function findWait(w){const J=JOBS[w.job][0],fs=terrFires(w.flag,w.hx,w.hy);if(!fs.length)return null;let b=null,bd=1e9;
+  for(const f of fs){const r=rad(f);eachNear(f.x,f.y,r,o=>{if(o.t!==J||!o.dep||o===w.bad)return;if(Math.hypot(o.x-f.x,o.y-f.y)>=r)return;const d=o.respawn+Math.hypot(o.x-w.x,o.y-w.y)*.01;if(d<bd){bd=d;b=o}})}return b}
+// Если рабочий не может дойти — ставим его рядом с целью (или помечаем цель недоступной).
+function unstick(w,o){for(let k=0;k<20;k++){const a=Math.random()*6.283,r=o.r+26+k*3,x=o.x+Math.cos(a)*r,y=o.y+Math.sin(a)*r;if(!blocked(x,y,10,o)){w.x=x;w.y=y;w.navEscape=0;w.stuck=0;return true}}
+  w.bad=o;w.badT=time+15;w.tg=null;w.wait=null;w.look=0;return false}
+function workerMine(w,o){if(!o||o.dep||w.cd>0)return false;const g=GIVE[o.t],c=w.cen;if(!g)return false;if(!c.mined)c.mined={wood:0,stone:0,gold:0};w.cd=2;o.hp--;o.shake=time+.15;p.inv[g[0]]++;c.mined[g[0]]++;if(Math.hypot(o.x-p.x,o.y-p.y)<700)floatText(o.x,o.y-22,'+1 '+g[1],g[2]);if(o.hp<=0){deplete(o);if(o.t==='tree'){p.inv.wood++;c.mined.wood++}w.tg=null;w.look=0}return true}
+function workersTick(dt){for(const w of workers){w.cd-=dt;w.look-=dt;
+  if(w.bad&&time>w.badT)w.bad=null;
+  if(w.tg&&(w.tg.dep||w.tg===w.bad)){w.tg=null;w.look=0}
+  if(!w.tg&&w.look<=0){w.look=.8;w.tg=findRes(w);w.wait=w.tg?null:findWait(w);w.wd=0;w.stall=0;w.wx=undefined}
+  const o=w.tg||w.wait;
+  if(o){const d=Math.hypot(o.x-w.x,o.y-w.y);w.a=Math.atan2(o.y-w.y,o.x-w.x);
+    if(d>o.r+32){navMove(w,o.x,o.y,95,dt,o.r+30,o);
+      if(w.wx===undefined){w.wx=w.x;w.wy=w.y}
+      w.wd+=dt;if(w.wd>=1){const mv=Math.hypot(w.x-w.wx,w.y-w.wy);w.wx=w.x;w.wy=w.y;w.wd=0;if(mv<12){w.stall++;if(w.stall>=2){unstick(w,o);w.stall=0}}else w.stall=0}}
+    else{w.wd=0;w.stall=0;w.wx=undefined;if(w.tg)workerMine(w,w.tg)}}
+  else{w.wt-=dt;if(w.wt<0){const hd=Math.hypot(w.hx-w.x,w.hy-w.y);w.a=hd>100?Math.atan2(w.hy-w.y,w.hx-w.x):Math.random()*6.28;w.wt=1.5+Math.random()*3;w.idle=hd<=100&&Math.random()<.5}if(!w.idle){const tx=w.x+Math.cos(w.a)*80,ty=w.y+Math.sin(w.a)*80;navMove(w,tx,ty,38,dt,0)}}
+  pushOut(w,10,o);if(w.stuck>1){w.a+=Math.PI/2;w.stuck=0;pushOut(w,14,o)}}}
+function promptText(n){return n.k==='fire'?'F — Костёр':n.k==='flag'?'F — Флаг':n.k==='barracks'?'F — Казарма':n.k==='hall'?'F — Ратуша':n.k==='clinic'?'F — Лекарня':n.k==='trade'?'F — Дом переговоров':n.k==='smelter'?'F — Плавильня':n.k==='truin'?'F — Восстановить вышку · '+cst(TOWER_RESTORE):n.k==='bruin'?'F — Восстановить казарму · '+cst(BRUIN):n.k==='hallruin'?'F — Восстановить ратушу · '+cst(HALL_RESTORE):'F — Восстановить дом · '+cst(HOUSE_RESTORE)}
+function provoke(g){const vv=villages[g.vi];if(vv)vv.alert=time+30;for(const h of guards)if(h.team==='v'&&h.vi===g.vi&&!h.dead&&Math.hypot(h.x-g.x,h.y-g.y)<450)h.aggro=true}
+const UNIT={wood:[.5,.75,1],stone:[.75,1,1.25],food:[.75,1,1.25],ore:[2,2.5,3]};
+function tradeOffer(vi,r){const t=villages[vi].tier,qty=(r==='ore'?[2,4,8]:[4,8,16])[t],m=.9+((vi*37)%13)/50;return{qty,price:Math.max(1,Math.round(qty*UNIT[r][t]*m))}}
+function hasHall(x,y){return objs.some(o=>o.t==='hall'&&!o.ruin&&Math.hypot(o.x-x,o.y-y)<340&&(o.own||(o.vi!=null&&villages[o.vi].state==='owned')))}
+function buy(r){const v=villages[tradeV];if(!v||(v.state!=='free'&&v.state!=='owned')||!UNIT[r])return;const o=tradeOffer(tradeV,r);if(p.inv.gold<o.price){toast('Не хватает золота.');return}p.inv.gold-=o.price;p.inv[r]+=o.qty;floatText(p.x,p.y-30,'+'+o.qty+' '+RN[r],'#a3c95f');renderMenu()}
+function defR(t){return t===p?(p.arm||0)*.1:(t.lv||0)*.12}
+function atkM(g){return 1+(g.lv||0)*.25}
+function upG(kind){const b=menuObj,l=mem(b,guards).filter(g=>(g.k==='archer')===(kind==='archer')&&(g.lv||0)<3).sort((a,c)=>(a.lv||0)-(c.lv||0));if(!l.length){toast('Некого улучшать.');return}
+  const g=l[0],lv=g.lv||0,c={ingot:2+lv};if(!can(c)){toast('Нужно слитков: '+c.ingot);return}pay(c);g.lv=lv+1;g.max+=10;g.hp=Math.min(g.max,g.hp+10);floatText(g.x,g.y-34,'Улучшен до ур. '+g.lv,LVC[g.lv]);renderMenu()}
+function upArmor(){const lv=p.arm||0;if(lv>=4){toast('Броня улучшена до максимума.');return}const c={ingot:[2,3,4,5][lv]};if(!can(c)){toast('Нужно слитков: '+c.ingot);return}pay(c);p.arm=lv+1;floatText(p.x,p.y-34,'Броня ур. '+p.arm,ARMC[p.arm]);renderMenu()}
+function smelt(all){const n=all?Math.floor(p.inv.ore/2):1;if(n<1||p.inv.ore<2*n){toast('Нужно 2 железные руды на слиток.');return}p.inv.ore-=2*n;p.inv.ingot+=n;floatText(p.x,p.y-30,'+'+n+' слит.','#9fb4c8');renderMenu()}
+function armHtml(){const lv=p.arm||0;return lv>=4?'<button class="opt" disabled><span>Броня: максимум<small>Защита 40%</small></span></button>':opt('uarm',0,'Улучшить броню (ур. '+lv+' → '+(lv+1)+')','Защита игрока +10% (сейчас '+lv*10+'%)',{ingot:[2,3,4,5][lv]})}
+function upgHtml(gs){let h='';for(const kind of['melee','archer']){const l=gs.filter(g=>(g.k==='archer')===(kind==='archer')),up=l.filter(g=>(g.lv||0)<3).sort((a,c)=>(a.lv||0)-(c.lv||0)),g=up[0],lv=g?g.lv||0:0,c={ingot:2+lv},nm=kind==='archer'?'лучника':'мечника';
+  h+=`<button class="opt" data-a="ug" data-v="${kind}"${g&&can(c)?'':' disabled'}><span>Улучшить ${nm}<small>${!l.length?'Таких стражников нет':!g?'Все улучшены до максимума':'ур. '+lv+' → '+(lv+1)+': +25% урона, +12% защиты, +10 HP'}</small></span><em>${g?cst(c):''}</em></button>`}
+  return h+armHtml()}
+const ARC_MIN=130,ARC_MAX=270,TRAD=170;
+function isFoe(o){return o.t==='tower'&&!o.own&&!o.ruin&&villages[o.vi]&&villages[o.vi].state==='free'}
+function clinicFor(g){let b=null,bd=650;for(const c of clinics){const d=Math.hypot(c.x-g.hx,c.y-g.hy);if(d<bd){bd=d;b=c}}return b}
+function shoot(x,y,tg,dm,team){const a=Math.atan2(tg.y-y,tg.x-x);arrows.push({x,y,vx:Math.cos(a)*560,vy:Math.sin(a)*560,a,dm,team,life:.85})}
+function hurtP(dm){if(p.dead)return;dm*=1-defR(p);p.hp-=dm;p.hurt=.3;floatText(p.x,p.y-26,'-'+Math.round(dm),'#ff6b5e');if(p.hp<=0){p.hp=0;p.dead=2.2;toast('Вас подстрелили...')}}
+function arrowsTick(dt){for(let i=arrows.length-1;i>=0;i--){const r=arrows[i];r.x+=r.vx*dt;r.y+=r.vy*dt;r.life-=dt;let hit=false;
+  if(r.team==='p'){for(const w of wolves){if(w.dead)continue;if(Math.hypot(w.x-r.x,w.y-r.y)<18){w.hp-=r.dm;w.hit=.15;if(w.hp<=0){w.dead=true;w.respawn=time+40}hit=true;break}}
+    if(!hit)for(const g of guards){if(g.team!=='v'||g.dead)continue;if(Math.hypot(g.x-r.x,g.y-r.y)<18){g.hp-=r.dm*(1-defR(g));g.hit=.15;provoke(g);if(g.hp<=0)g.dead=true;hit=true;break}}}
+  else{if(!p.dead&&Math.hypot(p.x-r.x,p.y-r.y)<16){hurtP(r.dm);hit=true}
+    if(!hit)for(const g of guards){if(g.team!=='p'||g.dead)continue;if(Math.hypot(g.x-r.x,g.y-r.y)<16){g.hp-=r.dm*(1-defR(g));g.hit=.15;if(g.hp<=0)g.dead=true;hit=true;break}}}
+  if(hit||r.life<=0)arrows.splice(i,1)}}
+function towersTick(dt){for(const o of towers){if(o.ruin)continue;o.cd-=dt;if(o.cd>0)continue;
+  if(o.own){let tg=null,td=TRAD;for(const w of wolves){if(w.dead)continue;const d=Math.hypot(w.x-o.x,w.y-o.y);if(d<td){td=d;tg=w}}
+    for(const g of guards){if(g.team!=='v'||!g.aggro||g.dead)continue;const d=Math.hypot(g.x-o.x,g.y-o.y);if(d<td){td=d;tg=g}}
+    if(tg){shoot(o.x,o.y-40,tg,9,'p');o.cd=1.1}}
+  else{const v=villages[o.vi];if(!v||v.state!=='free'||time>(v.alert||0))continue;let tg=null,td=TRAD;
+    if(!p.dead){const d=Math.hypot(p.x-o.x,p.y-o.y);if(d<td){td=d;tg=p}}
+    for(const g of guards){if(g.team!=='p'||!g.expedition||g.dead)continue;const d=Math.hypot(g.x-o.x,g.y-o.y);if(d<td){td=d;tg=g}}
+    if(tg){shoot(o.x,o.y-40,tg,7,'v');o.cd=1.4}}}}
+const placeSpot=()=>({x:p.x+Math.cos(p.face)*70,y:p.y+Math.sin(p.face)*70});
+function spotOk(s){return!blocked(s.x,s.y,30)&&!fires.some(f=>!f.gone&&Math.hypot(f.x-s.x,f.y-s.y)<44)&&!flags.some(f=>Math.hypot(f.x-s.x,f.y-s.y)<44)&&!towers.some(t=>!t.ruin&&Math.hypot(t.x-s.x,t.y-s.y)<64)}
+function cancelPlace(){if(placing){placing=null;toast('Постройка отменена.')}}
+function confirmPlace(){if(!placing)return;const s=placeSpot();if(!can(TOWER)){toast('Не хватает ресурсов: '+cst(TOWER));return}if(!spotOk(s)){toast('Здесь нельзя ставить — мало места.');return}
+  pay(TOWER);let vi=null;villages.forEach((v,i)=>{if(v.state==='owned'&&Math.hypot(v.x-s.x,v.y-s.y)<340)vi=i});const o={t:'tower',x:s.x,y:s.y,r:26,hp:50,max:50,vi,own:true,cd:0};addObj(o);towers.push(o);placing=null;toast('Вышка построена: стреляет по волкам и врагам.')}
+function healAll(){const b=menuObj,ws=mem(b,guards).filter(g=>g.hp<g.max);if(!ws.length){toast('Раненых нет.');return}const c={food:ws.length};if(!can(c)){toast('Нужно еды: '+ws.length);return}pay(c);ws.forEach(g=>{g.hp=g.max;floatText(g.x,g.y-26,'Здоров','#a3c95f')});renderMenu()}
+function guardsTick(dt){for(const g of guards){if(g.dead)continue;g.cd-=dt;g.hit-=dt;const arch=g.k==='archer';let vx=0,vy=0;
+  if(g.team==='p'&&g.hp<g.max)for(const c of clinics){if(Math.hypot(c.x-g.x,c.y-g.y)<240){g.hp=Math.min(g.max,g.hp+4*dt);break}}
+  if(g.team==='v'&&g.aggro&&!p.dead){let tg=p,td=Math.hypot(p.x-g.x,p.y-g.y);for(const a of guards)if(a.team==='p'&&a.expedition&&!a.dead){const ad=Math.hypot(a.x-g.x,a.y-g.y);if(ad<td){td=ad;tg=a}}
+    const dx=tg.x-g.x,dy=tg.y-g.y,d=td||1;
+    if(d>650)g.aggro=false;
+    else if(arch){g.a=Math.atan2(dy,dx);if(d>ARC_MAX)navMove(g,tg.x,tg.y,125,dt,ARC_MAX-30,tg);else if(d<ARC_MIN)navMove(g,g.x-dx,g.y-dy,110,dt,0);if(d<=ARC_MAX+20&&g.cd<=0){g.cd=1.6;shoot(g.x,g.y,tg,(g.dmg||7)*GM*atkM(g),'v')}}
+    else{if(d>32)navMove(g,tg.x,tg.y,125,dt,32,tg);g.a=Math.atan2(dy,dx);
+      if(d<32&&g.cd<=0){const dm=(g.dmg||8)*GM*atkM(g)*(1-defR(tg));tg.hp-=dm;g.cd=1;tg.hit=.15;floatText(tg.x,tg.y-26,'-'+Math.round(dm),'#ff6b5e');if(tg===p){p.hurt=.3;if(p.hp<=0){p.hp=0;p.dead=2.2;toast('Стражники одолели вас...')}}else if(tg.hp<=0)tg.dead=true}}}
+  else{let tg=null,td=1e9;const vr=arch?320:240;
+    if(g.team==='p')for(const w of wolves){if(w.dead)continue;const d=Math.hypot(w.x-g.x,w.y-g.y);if(d<vr&&d<td){td=d;tg=w}}
+    if(g.team==='p'&&g.expedition)for(const e of guards){if(e.team!=='v'||!e.aggro||e.dead)continue;const d=Math.hypot(e.x-g.x,e.y-g.y);if(d<300&&d<td){td=d;tg=e}}
+    if(tg){const dx=tg.x-g.x,dy=tg.y-g.y,d=td||1;g.a=Math.atan2(dy,dx);
+      if(arch){if(d>ARC_MAX)navMove(g,tg.x,tg.y,120,dt,ARC_MAX-30,tg);else if(d<ARC_MIN)navMove(g,g.x-dx,g.y-dy,110,dt,0);if(d<=ARC_MAX+20&&g.cd<=0){g.cd=1.4;shoot(g.x,g.y,tg,(g.dmg||7)*GM*atkM(g),'p')}}
+      else if(d>28)navMove(g,tg.x,tg.y,120,dt,28,tg);else if(g.cd<=0){g.cd=1;tg.hp-=(g.dmg||8)*GM*atkM(g)*(1-defR(tg));tg.hit=.15;tg.kx=dx/d*200;tg.ky=dy/d*200;if(tg.hp<=0){tg.dead=true;tg.respawn=time+40}}}
+    else{let fx=g.hx,fy=g.hy,heal=false;if(g.team==='p'&&g.expedition){const q=g.slot||0,ang=q*.9+Math.PI/2;fx=p.x+Math.cos(ang)*(55+q%2*18);fy=p.y+Math.sin(ang)*(55+q%2*18)}
+      else if(g.team==='p'&&g.hp<g.max){const cl=clinicFor(g);if(cl){fx=cl.x;fy=cl.y+52;heal=true}}
+      const hd=Math.hypot(fx-g.x,fy-g.y);if(hd>45){navMove(g,fx,fy,g.expedition?115:heal?75:38,dt,45)}else if(!heal){g.wt-=dt;if(g.wt<0){g.a=Math.random()*6.28;g.wt=1.5+Math.random()*3;g.idle=true}if(!g.idle){navMove(g,g.x+Math.cos(g.a)*80,g.y+Math.sin(g.a)*80,38,dt,0)}}}}
+  vx+=g.kx;vy+=g.ky;g.kx*=.85;g.ky*=.85;pushOut(g,10);if(g.stuck>1){g.a+=Math.PI/2;g.stuck=0;pushOut(g,14)}}}
+function villageTick(dt){for(const v of villages){
+  if(v.state==='burning'){v.t+=dt;const k=Math.min(1,v.t/9);v.fire.burn=k;for(const o of v.houses.concat(v.barracks,v.hall?[v.hall]:[],v.towers).filter(Boolean))o.burn=k;
+    if(k>=1){v.state='ruin';v.fire.gone=true;for(const o of v.houses.concat(v.barracks,v.hall?[v.hall]:[],v.towers).filter(Boolean)){o.ruin=true;o.burn=0}toast(v.name+' разрушена. Восстановление дома: '+cst(HOUSE_RESTORE)+'.')}}
+  else if(v.state==='ruin'){const fl=flagOf(v);if(fl&&fires.some(f=>!f.gone&&f.vi==null&&Math.hypot(f.x-v.x,f.y-v.y)<300)){v.state='owned';applyName(fl);toast(v.name+' ваша! Восстановите дома (F у руин).')}}}}
+
+// ---- выталкивание из построек
+function pushOut(e,rad,ignore){for(let it=0;it<4;it++){let mv=false;forNear(e.x,e.y,o=>{if(o===ignore||o.dep||o.ruin||o.t==='bush')return;const dx=e.x-o.x,dy=e.y-o.y,rr=rad+o.r,d2=dx*dx+dy*dy;if(d2<rr*rr){const d=Math.sqrt(d2);let nx=0,ny=1;if(d>.01){nx=dx/d;ny=dy/d}e.x=o.x+nx*(rr+1);e.y=o.y+ny*(rr+1);mv=true}});if(!mv)break}}
+// ---- update
+const SPEED={1:.55,2:.92,6:.8,9:.9,10:.75,11:.9};
+function update(dt){
+  time+=dt;phase=(phase+dt/300)%1;villageTick(dt);
+  for(let i=deps.length-1;i>=0;i--){const o=deps[i];if(time>o.respawn){deps.splice(i,1);o.dep=false;o.hp=o.max;for(const w of workers)if(!w.tg&&JOBS[w.job][0]===o.t&&inZone(w,o)){w.tg=o;w.wait=null;w.look=1.5}}}
+  if(p.dead){p.dead-=dt;if(p.dead<=0){p.dead=0;p.hurt=0;p.cd=0;placing=null;const v=villages[0];p.x=v.x;p.y=v.y+60;for(const g of guards)g.aggro=false;p.hp=p.max;p.inv.wood>>=1;p.inv.stone>>=1;p.inv.gold>>=1;p.inv.ore>>=1;p.inv.ingot>>=1;toast('Вы очнулись в Арвенте. Половина ресурсов потеряна.')}return}
+  pushOut(p,12);
+  let mx=(keys.d||keys.right?1:0)-(keys.a||keys.left?1:0),my=(keys.s||keys.down?1:0)-(keys.w||keys.up?1:0);
+  if(joy.on){mx=joy.x;my=joy.y}
+  const m=Math.hypot(mx,my);if(m>1){mx/=m;my/=m}
+  const tt=tileAt(p.x,p.y),sp=190*(SPEED[tt]||1);
+  if(m>.05){const nx=p.x+mx*sp*dt,ny=p.y+my*sp*dt;if(!blocked(nx,p.y,12))p.x=nx;if(!blocked(p.x,ny,12))p.y=ny;if(touchMode||!mouse.has)p.face=Math.atan2(my,mx)}
+  if(!touchMode&&mouse.has)p.face=Math.atan2(mouse.y-(p.y-camY),mouse.x-(p.x-camX));
+  p.x=clamp(p.x,10,W-10);p.y=clamp(p.y,10,W-10);
+  p.cd-=dt;p.swing-=dt;p.hurt-=dt;
+  if((hitHeld||mouse.down)&&started)attack();
+  const safe=inSafe(p.x,p.y);p.hp=Math.min(p.max,p.hp+(safe?6:.4)*dt);
+  for(const w of wolves){
+    if(w.dead){if(time>w.respawn){w.dead=false;w.x=w.hx;w.y=w.hy;w.hp=34}continue}
+    const dx=p.x-w.x,dy=p.y-w.y,d=Math.hypot(dx,dy);w.cd-=dt;w.hit-=dt;
+    if(d>900&&w.kx*w.kx+w.ky*w.ky<1){w.wt-=dt;if(w.wt<0){w.wt=2}continue} // далёкие волки почти не считаются
+    let vx=0,vy=0;w.chase=d<260&&!safe;
+    if(w.chase){vx=dx/d*120;vy=dy/d*120;w.a=Math.atan2(dy,dx)}
+    else{w.wt-=dt;if(w.wt<0){w.a=Math.random()*6.28;w.wt=1+Math.random()*3;w.idle=Math.random()<.4}if(!w.idle){vx=Math.cos(w.a)*42;vy=Math.sin(w.a)*42}}
+    vx+=w.kx;vy+=w.ky;w.kx*=.85;w.ky*=.85;
+    const nx=w.x+vx*dt,ny=w.y+vy*dt;if(walk(tileAt(nx,w.y)))w.x=nx;if(walk(tileAt(w.x,ny)))w.y=ny;
+    for(const f of fires){if(f.gone)continue;const ex=w.x-f.x,ey=w.y-f.y,ed=Math.hypot(ex,ey)||1,r=rad(f);if(ed<r){w.x=f.x+ex/ed*r;w.y=f.y+ey/ed*r}}
+    if(d<30&&w.cd<=0&&!safe){const wd=Math.max(1,Math.round(WD*(1-defR(p))));p.hp-=wd;w.cd=1;p.hurt=.3;floatText(p.x,p.y-26,'-'+wd,'#ff6b5e');
+      if(p.hp<=0){p.hp=0;p.dead=2.2;toast('Волки одолели вас...')}}
+  }
+  guardsTick(dt);workersTick(dt);towersTick(dt);arrowsTick(dt);
+  for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.t+=dt;f.y-=22*dt;if(f.t>1)floats.splice(i,1)}
+}
+
+// ---- render
+let camX=0,camY=0;
+function drawTree(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(sx,sy+9,17,7,0,0,7);ctx.fill();
+  if(o.dep){ctx.fillStyle='#6b4a2b';ctx.beginPath();ctx.arc(sx,sy+4,6,0,7);ctx.fill();return}
+  const k=o.k;
+  if(k==='pine'){ctx.fillStyle='#4a3320';ctx.fillRect(sx-3,sy-2,6,12);const cl=['#245044','#2d6552','#37795f'];
+    for(let i=0;i<3;i++){ctx.fillStyle=cl[i];ctx.beginPath();ctx.moveTo(sx,sy-40+i*11);ctx.lineTo(sx-11-i*4,sy-14+i*7);ctx.lineTo(sx+11+i*4,sy-14+i*7);ctx.closePath();ctx.fill()}
+    ctx.fillStyle='rgba(235,245,250,.55)';ctx.beginPath();ctx.moveTo(sx,sy-40);ctx.lineTo(sx-5,sy-31);ctx.lineTo(sx+5,sy-31);ctx.closePath();ctx.fill();return}
+  if(k==='palm'){ctx.strokeStyle='#8a6a3c';ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx,sy+8);ctx.quadraticCurveTo(sx+8,sy-12,sx+2,sy-30);ctx.stroke();
+    ctx.strokeStyle='#3f9a4a';ctx.lineWidth=4;for(let i=0;i<6;i++){const a=i/6*Math.PI*2;ctx.beginPath();ctx.moveTo(sx+2,sy-30);ctx.quadraticCurveTo(sx+2+Math.cos(a)*14,sy-38+Math.sin(a)*5,sx+2+Math.cos(a)*24,sy-28+Math.sin(a)*10);ctx.stroke()}
+    ctx.fillStyle='#6b4a2b';ctx.beginPath();ctx.arc(sx+4,sy-27,3,0,7);ctx.fill();return}
+  if(k==='acacia'){ctx.fillStyle='#6b4a2b';ctx.fillRect(sx-2,sy-18,4,28);ctx.fillRect(sx-8,sy-22,3,10);
+    ctx.fillStyle='#7f9138';ctx.beginPath();ctx.ellipse(sx,sy-24,24,8,0,0,7);ctx.fill();ctx.fillStyle='#a1b04a';ctx.beginPath();ctx.ellipse(sx-4,sy-27,15,5,0,0,7);ctx.fill();return}
+  if(k==='swamp'){ctx.fillStyle='#4a3a28';ctx.fillRect(sx-3,sy-6,6,16);ctx.fillStyle='#425f38';ctx.beginPath();ctx.ellipse(sx,sy-14,17,11,0,0,7);ctx.fill();ctx.fillStyle='#5a7a48';ctx.beginPath();ctx.ellipse(sx+5,sy-10,10,7,0,0,7);ctx.fill();
+    ctx.strokeStyle='#7a9a66';ctx.lineWidth=2;for(const a of[-10,-3,6,12]){ctx.beginPath();ctx.moveTo(sx+a,sy-6);ctx.lineTo(sx+a,sy+4+(a&3));ctx.stroke()}return}
+  if(k==='cactus'){ctx.fillStyle='#4d8a3c';ctx.fillRect(sx-4,sy-26,8,34);ctx.fillRect(sx-13,sy-16,9,4);ctx.fillRect(sx-13,sy-22,4,10);ctx.fillRect(sx+4,sy-12,9,4);ctx.fillRect(sx+9,sy-20,4,12);
+    ctx.fillStyle='#6fb259';ctx.fillRect(sx-1,sy-26,2,34);return}
+  ctx.fillStyle='#5a3d22';ctx.fillRect(sx-3,sy-2,6,12);
+  ctx.fillStyle='#2f6b30';ctx.beginPath();ctx.arc(sx,sy-12,17,0,7);ctx.fill();
+  ctx.fillStyle='#3f8a3c';ctx.beginPath();ctx.arc(sx-5,sy-17,11,0,7);ctx.fill();
+  ctx.fillStyle='#57a24d';ctx.beginPath();ctx.arc(sx+4,sy-20,7,0,7);ctx.fill()}
+function drawBush(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(sx,sy+6,13,5,0,0,7);ctx.fill();
+  ctx.fillStyle=o.dep?'#6e5a38':'#357a38';ctx.beginPath();ctx.arc(sx,sy,12,0,7);ctx.fill();
+  if(!o.dep){ctx.fillStyle='#d94b4b';for(const[a,b]of[[-5,-3],[4,-5],[2,4],[-4,5]]){ctx.beginPath();ctx.arc(sx+a,sy+b,2.4,0,7);ctx.fill()}}}
+function drawRock(o,sx,sy,gold){ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(sx,sy+8,16,6,0,0,7);ctx.fill();
+  const s=o.dep?.45:1,obs=o.k==='obs';ctx.fillStyle=o.dep?(obs?'#4a4450':'#7a7a72'):(obs?'#3d3742':'#8d8d85');ctx.beginPath();ctx.moveTo(sx-16*s,sy+6*s);ctx.lineTo(sx-9*s,sy-10*s);ctx.lineTo(sx+5*s,sy-14*s);ctx.lineTo(sx+16*s,sy-2*s);ctx.lineTo(sx+12*s,sy+8*s);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.22)';ctx.beginPath();ctx.moveTo(sx-9*s,sy-10*s);ctx.lineTo(sx+5*s,sy-14*s);ctx.lineTo(sx+1*s,sy-3*s);ctx.closePath();ctx.fill();
+  if(gold&&!o.dep){ctx.fillStyle='#f0c24a';for(const[a,b]of[[-6,-2],[3,-7],[7,2],[-2,3]]){ctx.beginPath();ctx.arc(sx+a,sy+b,2.6,0,7);ctx.fill()}}}
+function drawHouse(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(sx-30,sy-16,64,50);
+  ctx.fillStyle='#a8895a';ctx.fillRect(sx-28,sy-20,56,44);ctx.fillStyle='#8a2f2a';ctx.beginPath();ctx.moveTo(sx-34,sy-18);ctx.lineTo(sx,sy-40);ctx.lineTo(sx+34,sy-18);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#b8473f';ctx.beginPath();ctx.moveTo(sx,sy-40);ctx.lineTo(sx+34,sy-18);ctx.lineTo(sx,sy-18);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#3b2a18';ctx.fillRect(sx-6,sy+6,12,18);
+  if(o.burn>0){ctx.fillStyle=`rgba(20,10,5,${o.burn*.6})`;ctx.fillRect(sx-34,sy-42,68,68);flames(sx-12,sy+14,1.2);flames(sx+14,sy-6,1.4);flames(sx,sy-30,1)}}
+function flames(sx,sy,s){for(let i=0;i<5;i++){const ph=time*9+i*1.7,h=(18+Math.sin(ph)*8)*s,x=sx+(i-2)*9*s;ctx.fillStyle=i%2?'#ffb23a':'#ff6a2a';ctx.beginPath();ctx.moveTo(x-6*s,sy);ctx.quadraticCurveTo(x+Math.sin(ph)*4,sy-h*.6,x,sy-h);ctx.quadraticCurveTo(x+6*s,sy-h*.4,x+6*s,sy);ctx.fill()}}
+function drawFire(f,sx,sy){ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(sx,sy+6,16,6,0,0,7);ctx.fill();
+  ctx.fillStyle='#8d8d85';for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(sx+Math.cos(i*.9)*14,sy+4+Math.sin(i*.9)*6,3.4,0,7);ctx.fill()}
+  ctx.strokeStyle='#5a3d22';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx-10,sy+5);ctx.lineTo(sx+10,sy-1);ctx.moveTo(sx-10,sy-1);ctx.lineTo(sx+10,sy+5);ctx.stroke();
+  flames(sx,sy+2,.75*(f.burn?1-.5*f.burn:1))}
+function drawFlag(fl,sx,sy){ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(sx,sy+5,10,4,0,0,7);ctx.fill();
+  ctx.fillStyle='#5a3d22';ctx.fillRect(sx-2,sy-46,4,50);const w=Math.sin(time*4)*3;
+  ctx.fillStyle=fl.color;ctx.beginPath();ctx.moveTo(sx+2,sy-46);ctx.quadraticCurveTo(sx+16,sy-48+w,sx+30,sy-42);ctx.quadraticCurveTo(sx+16,sy-34-w,sx+30,sy-28);ctx.lineTo(sx+2,sy-26);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=1;ctx.stroke();
+  if(fl.name){ctx.textAlign='center';ctx.font='700 12px Figtree,system-ui,sans-serif';const tw=ctx.measureText(fl.name).width+10;ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(sx-tw/2,sy-70,tw,17);ctx.fillStyle=fl.color;ctx.fillText(fl.name,sx,sy-57)}}
+function drawRuin(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.22)';ctx.fillRect(sx-30,sy-4,62,26);ctx.fillStyle='#4a3a2a';ctx.fillRect(sx-26,sy+6,52,10);
+  ctx.fillStyle='#2b2118';for(const[a,b,r]of[[-16,2,.3],[8,-3,-.5],[-3,8,1.2],[16,9,.1]]){ctx.save();ctx.translate(sx+a,sy+b);ctx.rotate(r);ctx.fillRect(-14,-3,28,6);ctx.restore()}
+  ctx.fillStyle='#6b6a63';for(const[a,b]of[[-20,12],[0,2],[19,6]]){ctx.beginPath();ctx.arc(sx+a,sy+b,5,0,7);ctx.fill()}}
+function drawBarracks(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(sx-40,sy-14,82,52);
+  ctx.fillStyle='#7d7f85';ctx.fillRect(sx-38,sy-20,76,46);ctx.fillStyle='#6a6c72';ctx.fillRect(sx-38,sy-20,76,8);
+  ctx.fillStyle='#8f9197';for(let i=0;i<5;i++)ctx.fillRect(sx-38+i*17,sy-29,10,9);
+  const bc=o.own||villages[o.vi].state==='owned'?pcol(o):'#b8473f';ctx.fillStyle=bc;ctx.fillRect(sx-28,sy-8,10,20);ctx.fillRect(sx+18,sy-8,10,20);
+  ctx.fillStyle='#3b2a18';ctx.fillRect(sx-8,sy+2,16,24);
+  ctx.strokeStyle='#dfe3e8';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx-6,sy-14);ctx.lineTo(sx+6,sy-3);ctx.moveTo(sx+6,sy-14);ctx.lineTo(sx-6,sy-3);ctx.stroke();
+  if(o.burn>0){ctx.fillStyle=`rgba(20,10,5,${o.burn*.6})`;ctx.fillRect(sx-40,sy-30,82,60);flames(sx-18,sy+16,1.2);flames(sx+18,sy+4,1.4);flames(sx,sy-18,1)}}
+function drawHall(o,sx,sy){const c=pcol(o);ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(sx-44,sy-20,90,58);
+  ctx.fillStyle='#b89c6c';ctx.fillRect(sx-42,sy-24,84,50);ctx.fillStyle='#5a3d22';ctx.beginPath();ctx.moveTo(sx-48,sy-22);ctx.lineTo(sx,sy-50);ctx.lineTo(sx+48,sy-22);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#8a6a3c';ctx.fillRect(sx-9,sy-74,18,28);ctx.fillStyle='#5a3d22';ctx.beginPath();ctx.moveTo(sx-12,sy-74);ctx.lineTo(sx,sy-90);ctx.lineTo(sx+12,sy-74);ctx.fill();
+  ctx.fillStyle=c;ctx.fillRect(sx-30,sy-10,12,22);ctx.fillRect(sx+18,sy-10,12,22);ctx.fillStyle='#3b2a18';ctx.fillRect(sx-8,sy+2,16,24);
+  ctx.fillStyle='#f0e6c8';ctx.beginPath();ctx.arc(sx,sy-62,5,0,7);ctx.fill()}
+function drawTower(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(sx,sy+16,26,9,0,0,7);ctx.fill();
+  const c=o.own?pcol(o):'#b8473f';
+  ctx.fillStyle='#7d7f85';ctx.fillRect(sx-18,sy-42,36,56);ctx.fillStyle='#6a6c72';ctx.fillRect(sx-18,sy-42,9,56);
+  ctx.fillStyle='#8f9197';for(let i=0;i<4;i++)ctx.fillRect(sx-20+i*11,sy-52,8,11);
+  ctx.fillStyle='#3b2a18';ctx.fillRect(sx-5,sy-2,10,16);ctx.fillStyle=c;ctx.fillRect(sx-3,sy-34,6,14);
+  ctx.fillStyle='#c9ccd2';ctx.beginPath();ctx.arc(sx,sy-56,6,0,7);ctx.fill();ctx.strokeStyle='#8a5a2b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(sx+8,sy-54,8,-1.2,1.2);ctx.stroke();
+  if(o.burn>0){ctx.fillStyle=`rgba(20,10,5,${o.burn*.6})`;ctx.fillRect(sx-20,sy-60,40,76);flames(sx,sy+8,1.2);flames(sx,sy-24,1)}
+  if(o.hp<o.max){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(sx-20,sy-70,40,5);ctx.fillStyle='#d2574f';ctx.fillRect(sx-20,sy-70,40*o.hp/o.max,5)}}
+function drawClinic(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(sx-36,sy-14,76,48);
+  ctx.fillStyle='#e8e4d6';ctx.fillRect(sx-34,sy-20,68,42);ctx.fillStyle='#4a8a7a';ctx.beginPath();ctx.moveTo(sx-40,sy-18);ctx.lineTo(sx,sy-44);ctx.lineTo(sx+40,sy-18);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#d94b4b';ctx.fillRect(sx-4,sy-16,8,22);ctx.fillRect(sx-11,sy-9,22,8);ctx.fillStyle='#3b2a18';ctx.fillRect(sx+18,sy+4,10,18);ctx.fillRect(sx-28,sy+4,10,18)}
+function drawTrade(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(sx-38,sy-14,80,48);
+  ctx.fillStyle='#a8895a';ctx.fillRect(sx-36,sy-20,72,42);ctx.fillStyle='#2f6b8a';ctx.fillRect(sx-40,sy-26,80,10);
+  ctx.fillStyle='#e8d9a8';for(let i=0;i<4;i++)ctx.fillRect(sx-40+i*20,sy-26,10,10);
+  ctx.fillStyle='#3b2a18';ctx.fillRect(sx-8,sy+2,16,20);ctx.fillStyle='#f0c24a';ctx.beginPath();ctx.arc(sx,sy-40,9,0,7);ctx.fill();ctx.fillStyle='#8a6a1c';ctx.font='700 11px Figtree,system-ui,sans-serif';ctx.textAlign='center';ctx.fillText('$',sx,sy-36);ctx.strokeStyle='#5a3d22';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(sx,sy-31);ctx.lineTo(sx,sy-26);ctx.stroke()}
+function drawIron(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(sx,sy+8,16,6,0,0,7);ctx.fill();
+  const k=o.dep?.45:1;ctx.fillStyle=o.dep?'#5f5450':'#6a5a55';ctx.beginPath();ctx.moveTo(sx-16*k,sy+6*k);ctx.lineTo(sx-9*k,sy-10*k);ctx.lineTo(sx+5*k,sy-14*k);ctx.lineTo(sx+16*k,sy-2*k);ctx.lineTo(sx+12*k,sy+8*k);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.18)';ctx.beginPath();ctx.moveTo(sx-9*k,sy-10*k);ctx.lineTo(sx+5*k,sy-14*k);ctx.lineTo(sx+1*k,sy-3*k);ctx.closePath();ctx.fill();
+  if(!o.dep){ctx.fillStyle='#d9825a';for(const[a,b]of[[-7,-3],[2,-8],[7,1],[-2,3],[-9,4]]){ctx.beginPath();ctx.arc(sx+a,sy+b,2.4,0,7);ctx.fill()}ctx.fillStyle='#9fb4c8';ctx.fillRect(sx+3,sy-4,4,3)}}
+function drawSmelter(o,sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(sx-34,sy-12,72,46);
+  ctx.fillStyle='#6d6f75';ctx.fillRect(sx-32,sy-18,64,40);ctx.fillStyle='#5a5c62';ctx.fillRect(sx-32,sy-18,64,8);
+  ctx.fillStyle='#4d4f55';ctx.fillRect(sx+14,sy-46,14,30);ctx.fillRect(sx+12,sy-50,18,6);
+  ctx.fillStyle='#1c1410';ctx.fillRect(sx-14,sy-2,28,24);flames(sx,sy+18,.7);
+  ctx.fillStyle='rgba(120,120,120,.5)';ctx.beginPath();ctx.arc(sx+21+Math.sin(time*2)*3,sy-58-((time*20)%14),5,0,7);ctx.fill()}
+function drawWorker(g,sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(sx,sy+9,13,5,0,0,7);ctx.fill();
+  ctx.save();ctx.translate(sx,sy);ctx.rotate(g.a);ctx.strokeStyle='#8a5a2b';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(4,9);ctx.lineTo(g.cd>1.7?24:18,g.cd>1.7?3:9);ctx.stroke();
+  ctx.fillStyle=JOBS[g.job][3];ctx.beginPath();ctx.ellipse(0,0,7,12,0,0,7);ctx.fill();ctx.fillStyle='#e8c39a';ctx.beginPath();ctx.arc(1,0,7,0,7);ctx.fill();ctx.fillStyle='#6b4a2b';ctx.beginPath();ctx.arc(-1,0,6,Math.PI*.55,Math.PI*1.45);ctx.fill();ctx.restore()}
+function drawGuard(g,sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(sx,sy+9,14,6,0,0,7);ctx.fill();
+  ctx.save();ctx.translate(sx,sy);ctx.rotate(g.a);
+  if(g.k==='archer'){ctx.strokeStyle='#8a5a2b';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.arc(14,8,13,-1.1,1.1);ctx.stroke();ctx.strokeStyle='#dfe3e8';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(14+13*Math.cos(-1.1),8+13*Math.sin(-1.1));ctx.lineTo(14+13*Math.cos(1.1),8+13*Math.sin(1.1));ctx.stroke()}
+  else{ctx.strokeStyle='#8a5a2b';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(4,10);ctx.lineTo(32,10);ctx.stroke();
+  ctx.strokeStyle='#dfe3e8';ctx.beginPath();ctx.moveTo(32,10);ctx.lineTo(38,10);ctx.stroke()}
+  ctx.fillStyle=g.hit>0?'#ffb0a0':g.team==='p'?pcol({x:g.hx,y:g.hy}):g.k==='archer'?'#5f7a58':'#6b7078';ctx.beginPath();ctx.ellipse(0,0,8,14,0,0,7);ctx.fill();
+  const lc=LVC[g.lv||0];if(g.lv){ctx.strokeStyle=lc;ctx.lineWidth=2.5;ctx.beginPath();ctx.ellipse(0,0,8,14,0,0,7);ctx.stroke()}ctx.fillStyle=lc;ctx.beginPath();ctx.arc(1,0,8,0,7);ctx.fill();ctx.fillStyle='#8d9097';ctx.fillRect(3,-2,5,4);if(g.lv>=3){ctx.fillStyle='#d94b4b';ctx.fillRect(-9,-2,5,4)}ctx.restore();for(let i=0;i<(g.lv||0);i++){ctx.fillStyle=lc;ctx.fillRect(sx-10+i*7,sy-33,5,5)}
+  if(g.hp<g.max){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(sx-14,sy-24,28,4);ctx.fillStyle='#d2574f';ctx.fillRect(sx-14,sy-24,28*g.hp/g.max,4)}
+  if(g.aggro){ctx.fillStyle='#ff4a3a';ctx.font='700 16px Figtree,system-ui,sans-serif';ctx.textAlign='center';ctx.fillText('!',sx,sy-28)}}
+function drawZones(){const L=fires.filter(f=>!f.gone).map(f=>({x:f.x,y:f.y,r:rad(f),c:fcol(f)}));
+  for(const col of new Set(L.map(z=>z.c))){const G=L.filter(z=>z.c===col),V=G.filter(z=>{const sx=z.x-camX,sy=z.y-camY;return!(sx<-z.r||sy<-z.r||sx>VW+z.r||sy>VH+z.r)});if(!V.length)continue;
+    ctx.fillStyle=ctx.strokeStyle=col;ctx.globalAlpha=.09;ctx.beginPath();
+    for(const z of V){ctx.moveTo(z.x-camX+z.r,z.y-camY);ctx.arc(z.x-camX,z.y-camY,z.r,0,Math.PI*2)}ctx.fill();
+    ctx.globalAlpha=.9;ctx.lineWidth=3;ctx.setLineDash([10,8]);ctx.beginPath();
+    for(const z of V){const S=120;let pen=false;for(let k=0;k<=S;k++){const a=k/S*Math.PI*2,px=z.x+Math.cos(a)*z.r,py=z.y+Math.sin(a)*z.r;
+      if(G.every(o=>o===z||Math.hypot(px-o.x,py-o.y)>=o.r-.5)){if(pen)ctx.lineTo(px-camX,py-camY);else{ctx.moveTo(px-camX,py-camY);pen=true}}else pen=false}}
+    ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1}}
+function drawWolf(w,sx,sy){ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(sx,sy+8,15,6,0,0,7);ctx.fill();
+  ctx.save();ctx.translate(sx,sy);ctx.rotate(w.a);const c=w.hit>0?'#ffb0a0':(w.col||'#7b7f86');
+  ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(0,0,16,9,0,0,7);ctx.fill();
+  ctx.strokeStyle=c;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-14,0);ctx.lineTo(-24,3);ctx.stroke();
+  ctx.fillStyle=w.hit>0?'#ffb0a0':(w.hc||'#6a6e75');ctx.beginPath();ctx.arc(15,0,7,0,7);ctx.fill();
+  ctx.beginPath();ctx.moveTo(14,-5);ctx.lineTo(10,-11);ctx.lineTo(18,-7);ctx.fill();ctx.beginPath();ctx.moveTo(14,5);ctx.lineTo(10,11);ctx.lineTo(18,7);ctx.fill();
+  ctx.fillStyle=w.chase?'#ff4a3a':'#e8e8e0';ctx.fillRect(17,-3,2,2);ctx.fillRect(17,1,2,2);ctx.restore();
+  if(w.hp<34){ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(sx-14,sy-20,28,4);ctx.fillStyle='#d2574f';ctx.fillRect(sx-14,sy-20,28*w.hp/34,4)}}
+function drawPlayer(sx,sy){ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(sx,sy+9,15,6,0,0,7);ctx.fill();
+  ctx.save();ctx.translate(sx,sy);ctx.rotate(p.face);
+  ctx.fillStyle=p.hurt>0?'#e8665c':'#2c5f8a';ctx.beginPath();ctx.ellipse(0,0,8,14,0,0,7);ctx.fill();if(p.arm){ctx.strokeStyle=ARMC[p.arm];ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,0,8,14,0,0,7);ctx.stroke()}
+  ctx.fillStyle='#e8c39a';ctx.beginPath();ctx.arc(1,0,8,0,7);ctx.fill();
+  ctx.fillStyle='#4a3020';ctx.beginPath();ctx.arc(-2,0,7,Math.PI*.55,Math.PI*1.45);ctx.fill();if(p.arm){ctx.fillStyle=ARMC[p.arm];ctx.beginPath();ctx.arc(1,0,8.5,Math.PI*.5,Math.PI*1.5);ctx.fill()}
+  ctx.strokeStyle='#cfd3d8';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(9,9);ctx.lineTo(p.swing>0?34:26,p.swing>0?4:9);ctx.stroke();
+  ctx.strokeStyle='#8a5a2b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(8,9);ctx.lineTo(12,9);ctx.stroke();ctx.restore()}
+
+function render(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  camX=clamp(p.x-VW/2,0,Math.max(0,W-VW));camY=clamp(p.y-VH/2,0,Math.max(0,W-VH));
+  ctx.fillStyle='#1d4a6b';ctx.fillRect(0,0,VW,VH);
+  const x0=Math.max(0,(camX/T)|0),y0=Math.max(0,(camY/T)|0),x1=Math.min(N-1,((camX+VW)/T)|0),y1=Math.min(N-1,((camY+VH)/T)|0);
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=y*N+x,t=terr[i];ctx.fillStyle=PAL[t][shade[i]];ctx.fillRect(Math.floor(x*T-camX),Math.floor(y*T-camY),T+1,T+1);
+    if(t<=1){const w=Math.sin(time*1.6+x*.9+y*.7);if(w>.7){ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(x*T-camX+8,y*T-camY+18,20,2)}}
+    else if(t===12){const w=Math.sin(time*2.2+x*1.3+y*.9);ctx.fillStyle=`rgba(255,225,120,${.12+.18*Math.max(0,w)})`;ctx.fillRect(x*T-camX+6,y*T-camY+10,22,8);ctx.fillRect(x*T-camX+18,y*T-camY+26,14,6)}
+    else if(t===9&&shade[i]===0){ctx.fillStyle='rgba(255,120,50,.22)';ctx.fillRect(x*T-camX+14,y*T-camY+14,4,4)}
+    else if(t===10&&shade[i]<2){ctx.fillStyle='rgba(60,110,120,.35)';ctx.beginPath();ctx.ellipse(x*T-camX+20,y*T-camY+22,13,7,0,0,7);ctx.fill()}}
+  for(const v of villages){const sx=v.x-camX,sy=v.y-camY;if(sx<-300||sy<-300||sx>VW+300||sy>VH+300)continue;
+    ctx.fillStyle='rgba(120,92,56,.45)';ctx.beginPath();ctx.arc(sx,sy,135,0,7);ctx.fill();
+    const fc=v.state==='owned'?pcol(v):v.state==='ruin'?null:'#f0c24a';
+    ctx.fillStyle='#5a3d22';ctx.fillRect(sx-2,sy-(fc?34:10),4,fc?38:14);if(fc){ctx.fillStyle=fc;ctx.beginPath();ctx.moveTo(sx+2,sy-34);ctx.lineTo(sx+26,sy-27);ctx.lineTo(sx+2,sy-20);ctx.fill()}}
+  drawZones();
+  const items=[],vx0=camX-60,vx1=camX+VW+60,vy0=camY-60,vy1=camY+VH+60;
+  for(let j=Math.max(0,(vy0/GR)|0);j<=Math.min(GW-1,(vy1/GR)|0);j++)for(let i=Math.max(0,(vx0/GR)|0);i<=Math.min(GW-1,(vx1/GR)|0);i++){
+    for(const o of grid[j*GW+i])if(o.x>vx0&&o.x<vx1&&o.y>vy0&&o.y<vy1)items.push(o)}
+  for(const w of wolves)if(!w.dead&&w.x>vx0&&w.x<vx1&&w.y>vy0&&w.y<vy1)items.push(w);
+  for(const f of fires)if(!f.gone&&f.x>vx0&&f.x<vx1&&f.y>vy0&&f.y<vy1)items.push(f);for(const fl of flags)items.push(fl);for(const g of workers)if(g.x>vx0&&g.x<vx1&&g.y>vy0&&g.y<vy1)items.push(g);for(const g of guards)if(!g.dead&&g.x>vx0&&g.x<vx1&&g.y>vy0&&g.y<vy1)items.push(g);
+  items.push(p);items.sort((a,b)=>a.y-b.y);
+  if(p.swing>0){ctx.strokeStyle=`rgba(255,255,255,${p.swing/.18*.55})`;ctx.lineWidth=6;ctx.beginPath();ctx.arc(p.x-camX,p.y-camY,46,p.swingAng-1,p.swingAng+1);ctx.stroke()}
+  for(const o of items){const sh=o.shake>time?Math.sin(time*70)*3:0,sx=o.x-camX+sh,sy=o.y-camY;
+    if(o===p){if(!p.dead)drawPlayer(sx,sy)}else if(o.t==='tree')drawTree(o,sx,sy);else if(o.t==='bush')drawBush(o,sx,sy);else if(o.t==='rock')drawRock(o,sx,sy,false);else if(o.t==='gold')drawRock(o,sx,sy,true);else if(o.t==='house'){if(o.ruin)drawRuin(o,sx,sy);else drawHouse(o,sx,sy)}else if(o.t==='barracks'){if(o.ruin){drawRuin(o,sx-14,sy);drawRuin(o,sx+16,sy+2)}else drawBarracks(o,sx,sy)}else if(o.t==='tower'){if(o.ruin)drawRuin(o,sx,sy);else drawTower(o,sx,sy)}else if(o.t==='clinic')drawClinic(o,sx,sy);else if(o.t==='trade')drawTrade(o,sx,sy);else if(o.t==='smelter')drawSmelter(o,sx,sy);else if(o.t==='iron')drawIron(o,sx,sy);else if(o.t==='guard')drawGuard(o,sx,sy);else if(o.t==='worker')drawWorker(o,sx,sy);else if(o.t==='hall')drawHall(o,sx,sy);else if(o.t==='fire')drawFire(o,sx,sy);else if(o.t==='flag')drawFlag(o,sx,sy);else drawWolf(o,sx,sy)}
+  ctx.lineCap='round';for(const r of arrows){const sx=r.x-camX,sy=r.y-camY;ctx.strokeStyle=r.team==='p'?'#e8e2c8':'#ffb08a';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx-Math.cos(r.a)*16,sy-Math.sin(r.a)*16);ctx.stroke()}
+  if(placing){const q=placeSpot(),ok=spotOk(q)&&can(TOWER),R=rad({lvl:2}),sx=q.x-camX,sy=q.y-camY,col=ok?'#7bc74d':'#d94b4b';ctx.fillStyle=col;ctx.globalAlpha=.12;ctx.beginPath();ctx.arc(sx,sy,R,0,7);ctx.fill();ctx.globalAlpha=.9;ctx.strokeStyle=col;ctx.lineWidth=3;ctx.setLineDash([10,8]);ctx.beginPath();ctx.arc(sx,sy,R,0,7);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=.65;drawTower({own:true,x:q.x,y:q.y},sx,sy);ctx.globalAlpha=1}
+  ctx.textAlign='center';ctx.font='700 13px Figtree,system-ui,sans-serif';
+  for(const v of villages){const sx=v.x-camX,sy=v.y-camY-48;if(sx<-100||sy<-100||sx>VW+100||sy>VH+100)continue;ctx.fillStyle='rgba(0,0,0,.55)';const tw=ctx.measureText(v.name+' ★★★').width+16;ctx.fillRect(sx-tw/2,sy-14,tw,20);ctx.fillStyle=v.state==='owned'?pcol(v):v.state==='ruin'?'#9a9a90':v.state==='burning'?'#ff8a4a':'#f0c24a';ctx.fillText(v.name+' '+'★'.repeat(TIERS[v.tier].st)+'☆'.repeat(3-TIERS[v.tier].st),sx,sy)}
+  for(const o of items)if(o.ruin){const C=o.t==='barracks'?BRUIN:o.t==='hall'?HALL_RESTORE:o.t==='tower'?TOWER_RESTORE:HOUSE_RESTORE,sx=o.x-camX,sy=o.y-camY-24,t=cst(C),tw=ctx.measureText(t).width+12;ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(sx-tw/2,sy-12,tw,18);ctx.fillStyle=villages[o.vi].state==='owned'?'#a3c95f':'#f0c24a';ctx.fillText(t,sx,sy+1)}
+  for(const f of floats){ctx.globalAlpha=1-f.t;ctx.fillStyle=f.col;ctx.fillText(f.txt,f.x-camX,f.y-camY);ctx.globalAlpha=1}
+  const day=.5+.5*Math.cos(phase*Math.PI*2),dark=clamp(.45-day,0,.45)/.45;
+  if(dark>0){ctx.fillStyle=`rgba(8,14,42,${dark*.5})`;ctx.fillRect(0,0,VW,VH);
+    for(const f of fires){if(f.gone)continue;const sx=f.x-camX,sy=f.y-camY;if(sx<-150||sy<-150||sx>VW+150||sy>VH+150)continue;const g=ctx.createRadialGradient(sx,sy,4,sx,sy,130);g.addColorStop(0,`rgba(255,160,60,${dark*.5})`);g.addColorStop(1,'rgba(255,160,60,0)');ctx.fillStyle=g;ctx.fillRect(sx-130,sy-130,260,260)}}
+  if(p.dead){ctx.fillStyle='rgba(120,10,10,.35)';ctx.fillRect(0,0,VW,VH)}
+}
+
+// ---- minimap
+function drawMap(c,size){c.width=c.height=size;const m=c.getContext('2d');m.imageSmoothingEnabled=false;m.drawImage(mini,0,0,size,size);const k=size/W;
+  for(const f of fires){if(f.gone||f.vi!=null)continue;m.fillStyle='#ff9a3a';m.fillRect(f.x*k-2,f.y*k-2,4,4)}
+  for(const flag of flags){m.fillStyle=flag.color;m.fillRect(flag.x*k-3,flag.y*k-5,6,6);m.strokeStyle='#000';m.strokeRect(flag.x*k-3,flag.y*k-5,6,6)}
+  for(const v of villages){m.fillStyle=v.state==='owned'?pcol(v):v.state==='ruin'?'#777':v.state==='burning'?'#ff6a2a':'#f0c24a';m.fillRect(v.x*k-3,v.y*k-3,6,6);m.strokeStyle='#000';m.lineWidth=1;m.strokeRect(v.x*k-3,v.y*k-3,6,6)}
+  m.strokeStyle='rgba(255,255,255,.55)';m.lineWidth=1;m.strokeRect(camX*k,camY*k,VW*k,VH*k);
+  m.fillStyle='#fff';m.beginPath();m.arc(p.x*k,p.y*k,3.5,0,7);m.fill();m.strokeStyle='#d2574f';m.lineWidth=2;m.beginPath();m.arc(p.x*k,p.y*k,5.5,0,7);m.stroke()}
+
+// ---- HUD
+const cache={};
+function setTxt(id,v){if(cache[id]!==v){cache[id]=v;$(id).textContent=v}}
+function hud(){
+  $('hpFill').style.width=(p.hp/p.max*100)+'%';setTxt('hpTxt',Math.ceil(p.hp)+' / '+p.max+(p.arm?' · брон. '+p.arm:''));
+  setTxt('rWood',p.inv.wood);setTxt('rStone',p.inv.stone);setTxt('rGold',p.inv.gold);setTxt('rFood',p.inv.food);setTxt('rOre',p.inv.ore);setTxt('rIng',p.inv.ingot);
+  const v=inSafe(p.x,p.y);setTxt('loc',v?(v.vi!=null?villages[v.vi].name+' · '+TIERS[villages[v.vi].tier].n:(flagOf(v)&&flagOf(v).name)||'Ваш лагерь')+' · безопасная зона':BIOME[tileAt(p.x,p.y)]);
+  const n=nearest(),pr=$('prompt'),pt=menu.hidden&&started&&n&&!placing?promptText(n):'';pr.hidden=!pt;if(pt)setTxt('prompt',pt);
+  const pb=$('placebar');pb.hidden=!(placing&&started&&menu.hidden);if(placing){const q=placeSpot();setTxt('ptxt','Вышка · '+cst(TOWER)+(spotOk(q)?'':' · место занято'))}
+  const hrs=((phase*24+12)%24),hh=Math.floor(hrs),mm=Math.floor((hrs-hh)*60);
+  setTxt('clock',String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+' · x '+Math.round(p.x/T)+' y '+Math.round(p.y/T));
+  const mc=$('mm');drawMap(mc,132);if(!bigmap.hidden)drawMap($('bm'),Math.min(VW,VH)-100);
+}
+
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(started&&menu.hidden)update(dt);else{time+=dt;phase=(phase+dt/300)%1}render();hud();requestAnimationFrame(loop)}
+syncTouch();requestAnimationFrame(loop);
+})();
+</script>
+
+</body></html>
